@@ -8,7 +8,6 @@ from os import chdir
 
 #TODO Save positions as absolute coordinates based on analizyng box dimensions
 
-
 def counterclockwiseSort(tetragon):
     tetragon = sorted(tetragon, key = lambda e: e[0])
     tetragon[0:2] = sorted(tetragon[0:2], key = lambda e: e[1])
@@ -249,7 +248,8 @@ def trace(filename):
         POS = np.append(POS,[[t,abs_x,abs_y]],axis=0)## ######################################
     
     POS = np.delete(POS,0,axis=0)###
-    np.savetxt(RELATIVE_DESTINATION_PATH + 'positions/' + name +'_['+str(DimX)+'x'+str(DimY) + '].csv', POS, fmt = '%.2f', delimiter = ',')
+    np.savetxt(RELATIVE_DESTINATION_PATH + 'positions/' + '[' + str(DimX) + 'x' + str(DimY) + '] ' + name + '.csv',
+        POS, fmt = '%.2f', delimiter = ',')
     
     cv2.destroyAllWindows()
     cap.release()
@@ -262,6 +262,13 @@ def trace(filename):
     print(filename + "\tdistance %.2f\t" % Distance + 'm ' + "processing/real time %.1f" % float(time.time()-start) + "/%.1f s" % t)
     file.write(name + ",%.2f" % Distance + ",%.1f\n" % t)
     file.close()
+
+
+
+ONLINE = True
+
+if len(sys.argv)>1 and '--offline' in sys.argv:
+    ONLINE = False
 
 
 BGR_COLOR = {'red': (0,0,255),
@@ -283,11 +290,6 @@ name = ""
 from config import RES, CC, SC, reload
 if __name__ == '__main__':
     conf_data = reload()
-
-ONLINE = True
-
-if len(sys.argv)>1 and '--offline' in sys.argv:
-    ONLINE = False
 
 
 if __name__ == '__main__':
