@@ -178,14 +178,15 @@ def trace(filename):
 
         if ONLINE:
             if not contours:
-
+                
+                frame = cv2.add(np.zeros_like(frame), imgTrack)
                 cv2.putText(frame, "Distance " + str('%.2f' % Distance) + 'm',
                     (20,20), cv2.FONT_HERSHEY_DUPLEX, 0.5, BGR_COLOR['white'])
                 cv2.putText(frame, "Time " + str('%.0f sec' % (cap.get(cv2.CAP_PROP_POS_MSEC)/1000.)),
                     (20,40), cv2.FONT_HERSHEY_DUPLEX, 0.5, BGR_COLOR['white'])
                 cv2.circle(frame, (x,y), 5, BGR_COLOR['black'], -1, cv2.LINE_AA)
                 
-                layout = np.hstack((np.zeros_like(frame), frameColor))
+                layout = np.hstack((frame, frameColor))
                 video.write(cv2.resize(layout, SD))
                 cv2.imshow('Open Field Trace of ' + name, layout)
             
