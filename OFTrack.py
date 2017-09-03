@@ -6,7 +6,6 @@ import Tkinter as tk
 import tkFileDialog as filedialog
 from os import chdir
 
-#TODO Save positions as absolute coordinates based on analizyng box dimensions
 
 def counterclockwiseSort(tetragon):
     tetragon = sorted(tetragon, key = lambda e: e[0])
@@ -126,8 +125,9 @@ def trace(filename):
     if not CC:
         frame = cv2.bitwise_not(frame)##########
     
-    video = cv2.VideoWriter(RELATIVE_DESTINATION_PATH + 'timing/' + name + "_trace.avi", cv2.VideoWriter_fourcc(*'X264'), FPS, SD, cv2.INTER_LINEAR)
-    #imgTrack = np.zeros_like(frame)
+    if args.out_video:
+        video = cv2.VideoWriter(RELATIVE_DESTINATION_PATH + 'timing/' + name + "_trace.avi", cv2.VideoWriter_fourcc(*'X264'), FPS, SD, cv2.INTER_LINEAR)
+
     imgTrack = np.zeros([ h, int(float(h)*float(DimX)/float(DimY)), 3 ],dtype='uint8')
     
     start = time.time()
@@ -175,7 +175,8 @@ def trace(filename):
             distance += np.sqrt( (x-_x)**2 + (y-_y)**2 )/float(h)
             Distance = distance*DimY/100
 
-        if ONLINE:
+        
+        if args.display or args.out_video:
             if not contours:
                 
                 frame = cv2.add(np.zeros_like(frame), imgTrack)
@@ -186,10 +187,14 @@ def trace(filename):
                 cv2.circle(frame, (x,y), 5, BGR_COLOR['black'], -1, cv2.LINE_AA)
                 
                 layout = np.hstack((frame, frameColor))
-                video.write(cv2.resize(layout, SD))
-                cv2.imshow('Open Field Trace of ' + name, layout)
+
+                if args.display:
+                    cv2.imshow('Open Field Trace of ' + name, layout)
+
+                if args.out_video:
+                    video.write(cv2.resize(layout, SD))
             
-                k = cv2.waitKey(WAIT_DELAY) & 0xff 
+                k = cv2.waitKey(WAIT_DELAY) & 0xff
                 if k == 27:
                     break
                 if k == 32:
@@ -198,7 +203,6 @@ def trace(filename):
                     else:
                         WAIT_DELAY = 1  # play as fast as possible
                 continue
-
 
             # Draw the most acute angles of the contour (tail/muzzle/paws of the animal)
             hull = cv2.convexHull(contour)
@@ -217,7 +221,6 @@ def trace(filename):
 
             imgContour = cv2.add(imgPoints, imgTrack)
 
-            
             frame = cv2.bitwise_and(frame, frame, mask = thresh)
             frame = cv2.addWeighted(frame, 0.4, imgContour, 1.0, 0.)
 
@@ -229,8 +232,11 @@ def trace(filename):
             
             layout = np.hstack((frame, frameColor))
 
-            cv2.imshow('Open Field Trace of ' + name, layout)
-            video.write(cv2.resize(layout, SD))
+            if args.display:
+                cv2.imshow('Open Field Trace of ' + name, layout)
+
+            if args.out_video:
+                video.write(cv2.resize(layout, SD))            
 
             k = cv2.waitKey(WAIT_DELAY) & 0xff
             if k == 27:
@@ -245,30 +251,52 @@ def trace(filename):
 
         abs_x = float(DimY)*float(x)/float(h)
         abs_y = float(y)/float(h)*float(DimY)
-        POS = np.append(POS,[[t,abs_x,abs_y]],axis=0)## ######################################
+        if args.out_csv:
+            POS = np.append(POS,[[t,abs_x,abs_y]],axis=0)# Time & Positions for csv file
     
-    POS = np.delete(POS,0,axis=0)###
-    np.savetxt(RELATIVE_DESTINATION_PATH + 'positions/' + '[' + str(DimX) + 'x' + str(DimY) + '] ' + name + '.csv',
-        POS, fmt = '%.2f', delimiter = ',')
+    if args.out_csv:
+        POS = np.delete(POS,0,axis=0)###
+        np.savetxt(RELATIVE_DESTINATION_PATH + 'positions/' + '[' + str(DimX) + 'x' + str(DimY) + '] ' + name + '.csv',
+            POS, fmt = '%.2f', delimiter = ',')
     
     cv2.destroyAllWindows()
     cap.release()
 
-    if ONLINE:
+    if args.out_video:
         video.release()
-        cv2.imwrite(RELATIVE_DESTINATION_PATH + 'traces/' + name + '_[distance]=%.2f' % Distance + 'm' +
-            '_[time]=%.1fs' % t + '.png', cv2.resize(imgTrack, (w, h))) ############
+
+    #    cv2.imwrite(RELATIVE_DESTINATION_PATH + 'traces/' + name + '_[distance]=%.2f' % Distance + 'm' +
+    #        '_[time]=%.1fs' % t + '.png', cv2.resize(imgTrack, (w, h))) ############
     
     print(filename + "\tdistance %.2f\t" % Distance + 'm ' + "processing/real time %.1f" % float(time.time()-start) + "/%.1f s" % t)
     file.write(name + ",%.2f" % Distance + ",%.1f\n" % t)
     file.close()
 
 
+#Argparsing
+import argparse
 
-ONLINE = True
+parser = argparse.ArgumentParser(description='Animal tracking with OpenCV')
 
-if len(sys.argv)>1 and '--offline' in sys.argv:
-    ONLINE = False
+parser.add_argument('input',nargs='*',help='')
+parser.add_argument('-o','--output',dest='out_destination',metavar='DES',help='Specify output destination.')
+parser.add_argument('-nv','--no-video',dest='out_video',action='store_false',help='Disable video file output.')
+parser.add_argument('-nc','--no-csv',dest='out_csv',action='store_false',help='Disable csv file output.')
+parser.add_argument('-nd','--no-display',dest='display',action='store_false',help='Disable video display.')
+parser.add_argument('-l','--live',dest='live',metavar='SRC',
+    help='Specify a camera for live video feed. It can be an integer or an ip address.')
+
+args = parser.parse_args()
+
+file_paths = [os.path.abspath(os.path.expanduser(values)) for values in args.input]
+
+
+
+"""
+parser.add_argument('','',dest='',help='')
+parser.add_argument('','',dest='',help='')
+"""
+
 
 
 BGR_COLOR = {'red': (0,0,255),
@@ -291,10 +319,11 @@ from config import RES, CC, SC, reload
 if __name__ == '__main__':
     conf_data = reload()
 
-
 if __name__ == '__main__':
-    tk.Tk().withdraw()
-    file_paths=filedialog.askopenfilenames()
+    if not file_paths:
+        tk.Tk().withdraw()
+        file_paths=filedialog.askopenfilenames()
+
     files = [file.split('/')[-1] for file in file_paths]
     paths =['/'.join(p)+'/' for p in [path.split('/')[:-1] for path in file_paths]]
     RELATIVE_DESTINATION_PATH = str(datetime.date.today()) + "_distance/"
