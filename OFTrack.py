@@ -51,9 +51,9 @@ def angle_cos(p0, p1, p2):
     d1, d2 = (p0-p1).astype('float'), (p2-p1).astype('float')
     return abs( np.dot(d1, d2) / np.sqrt( np.dot(d1, d1)*np.dot(d2, d2) ) )
 
-def floorCrop(filename, conf_data):
-    global perspectiveMatrix,tetragons,name,croppingPolygons,SD
-    global RENEW_TETRAGON, ratio, DimX, DimY, CC, FPS, THRESHOLD_ANIMAL_VS_FLOOR
+def floorCrop(filename, conf_data, args):
+    global perspectiveMatrix,tetragons,croppingPolygons,SD,name
+    global RENEW_TETRAGON, ratio, DimX, DimY, CC, FPS, THRESHOLD_ANIMAL_VS_FLOOR,cap
     ###########
     [DimX,DimY,CC,RA,FPS,res,THRESHOLD_ANIMAL_VS_FLOOR] = conf_data
     res = RES[res].split('x')
@@ -63,7 +63,11 @@ def floorCrop(filename, conf_data):
     ratio = float(RA[0])/float(RA[1])
     ##############
 
-    name = os.path.splitext(filename)[0]
+    if args.live:
+            name = 'Live'
+    else:        
+            name = os.path.splitext(filename)[0]
+        
     cap = cv2.VideoCapture(filename)
     h, w = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(h*ratio)
@@ -103,15 +107,24 @@ def floorCrop(filename, conf_data):
     if __name__ == '__main__':
         trace(filename)
     else:
+        cap.release()
         return perspectiveMatrix
 
 def trace(filename):
     global perspectiveMatrix,croppingPolygons,tetragons,name,WAIT_DELAY
-    global POS, DimX, DimY, SD, CC
+    global POS, DimX, DimY, SD, CC,cap
 
     POS=np.array([[-1,-1,-1]])###
-    name = os.path.splitext(filename)[0]
-    cap = cv2.VideoCapture(filename)
+    
+    if args.live:
+        name = 'Live'
+        livedate = time.strftime(" %Y-%m-%d[%H:%M:%S]")
+    else:
+        name = os.path.splitext(filename)[0]
+        livedate = ''
+    
+    
+    #cap = cv2.VideoCapture(filename)
     h, w = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(h*ratio)
     w = int(w*ratio)
@@ -126,7 +139,8 @@ def trace(filename):
         frame = cv2.bitwise_not(frame)##########
     
     if args.out_video:
-        video = cv2.VideoWriter(RELATIVE_DESTINATION_PATH + 'timing/' + name + "_trace.avi", cv2.VideoWriter_fourcc(*'X264'), FPS, SD, cv2.INTER_LINEAR)
+        video = cv2.VideoWriter(RELATIVE_DESTINATION_PATH + 'timing/' + name + livedate + "_trace.avi",
+            cv2.VideoWriter_fourcc(*'X264'), FPS, SD, cv2.INTER_LINEAR)
 
     imgTrack = np.zeros([ h, int(float(h)*float(DimX)/float(DimY)), 3 ],dtype='uint8')
     
@@ -292,24 +306,27 @@ if __name__ == '__main__':
     #Argparsing
     parser = argparse.ArgumentParser(description='Animal tracking with OpenCV')
     parser.add_argument('input',nargs='*',help='Input files.')
-    parser.add_argument('-o','--output',dest='out_destination',metavar='DES',help='Specify output destination.')
+    parser.add_argument('-o','--output',dest='out_destination',metavar='DES',default='',help='Specify output destination.')
     parser.add_argument('-nv','--no-video',dest='out_video',action='store_false',help='Disable video file output.')
     parser.add_argument('-nc','--no-csv',dest='out_csv',action='store_false',help='Disable csv file output.')
     parser.add_argument('-nd','--no-display',dest='display',action='store_false',help='Disable video display.')
-    parser.add_argument('-l','--live',dest='live',metavar='SRC',
+    parser.add_argument('-l','--live',dest='live',metavar='SRC',default='',
         help='Specify a camera for live video feed. It can be an integer or an ip address.')
     args = parser.parse_args()
+
     file_paths = [os.path.abspath(os.path.expanduser(values)) for values in args.input]
+    if args.live:
+        files = [args.live]
+    else:
+        if not file_paths:
+            tk.Tk().withdraw()
+            file_paths=filedialog.askopenfilenames()
 
-    if not file_paths:
-        tk.Tk().withdraw()
-        file_paths=filedialog.askopenfilenames()
-
-    files = [file.split('/')[-1] for file in file_paths]
-    paths =['/'.join(p)+'/' for p in [path.split('/')[:-1] for path in file_paths]]
-    RELATIVE_DESTINATION_PATH = str(datetime.date.today()) + "_distance/"
-    os.chdir(paths[0])
- 
+        files = [file.split('/')[-1] for file in file_paths]
+        paths =['/'.join(p)+'/' for p in [path.split('/')[:-1] for path in file_paths]]
+        os.chdir(paths[0])
+    
+    RELATIVE_DESTINATION_PATH = args.out_destination + 'OFTrack [' + str(datetime.date.today()) + "]/"
     if not os.path.exists(RELATIVE_DESTINATION_PATH + 'timing'):
         os.makedirs(RELATIVE_DESTINATION_PATH + 'timing')
     if not os.path.exists(RELATIVE_DESTINATION_PATH + 'positions'):
@@ -321,5 +338,5 @@ if __name__ == '__main__':
 
     for filename in files:
         file = open(RELATIVE_DESTINATION_PATH + "distances.csv", 'a')
-        floorCrop(filename, conf_data)
+        floorCrop(filename, conf_data, args)
 

@@ -1,6 +1,7 @@
 import tkFileDialog as filedialog
 import Tkinter as tk
 import numpy as np
+import argparse
 import os, cv2
 
 #[Dimx,Dimy,CC,ratio,FPS,out_res,AvF_thresh]
@@ -124,11 +125,16 @@ class getparams(tk.Tk):
         RA = RA.split('/')
         ratio = float(RA[0])/float(RA[1])
 
-        tk.Tk().withdraw()
-        filename=filedialog.askopenfilename()
+        if args.live:
+            filename = args.live
+            name = 'Live'
+        else:
+            tk.Tk().withdraw()
+            filename=filedialog.askopenfilename()
+            name = os.path.splitext(filename)[0]
+
         if not filename:  return
-        perspectiveMatrix = floorCrop(filename, conf_data)
-        name = os.path.splitext(filename)[0]
+        perspectiveMatrix = floorCrop(filename, conf_data, args)
         cap = cv2.VideoCapture(filename)
 
         h, w = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -148,7 +154,7 @@ class getparams(tk.Tk):
             print('No frames found.')
             return
 
-        if  len(perspectiveMatrix[os.path.splitext(filename)[0]])==0:
+        if  len(perspectiveMatrix[name])==0:
             print('no perspective')
             return
 
@@ -244,6 +250,10 @@ class getparams(tk.Tk):
 
 if __name__ == '__main__':
     from OFTrack import floorCrop, BGR_COLOR
+    parser = argparse.ArgumentParser(description='Animal tracking with OpenCV')
+    parser.add_argument('-l','--live',dest='live',metavar='SRC',default='',
+        help='Specify a camera for live video calibration. It can be an integer or an ip address.')
+    args = parser.parse_args()
     conf_data = reload()
     AvF_thresh = conf_data[-1]
     getparams().mainloop()
