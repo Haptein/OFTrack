@@ -264,9 +264,6 @@ def trace(filename):
 
     if args.out_video:
         video.release()
-
-    #    cv2.imwrite(RELATIVE_DESTINATION_PATH + 'traces/' + name + '_[distance]=%.2f' % Distance + 'm' +
-    #        '_[time]=%.1fs' % t + '.png', cv2.resize(imgTrack, (w, h))) ############
     
     print(filename + "\tdistance %.2f\t" % Distance + 'm ' + "processing/real time %.1f" % float(time.time()-start) + "/%.1f s" % t)
     file.write(name + ",%.2f" % Distance + ",%.1f\n" % t)
@@ -278,7 +275,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Animal tracking with OpenCV')
 
-parser.add_argument('input',nargs='*',help='')
+parser.add_argument('input',nargs='*',help='Input files.')
 parser.add_argument('-o','--output',dest='out_destination',metavar='DES',help='Specify output destination.')
 parser.add_argument('-nv','--no-video',dest='out_video',action='store_false',help='Disable video file output.')
 parser.add_argument('-nc','--no-csv',dest='out_csv',action='store_false',help='Disable csv file output.')
@@ -289,14 +286,6 @@ parser.add_argument('-l','--live',dest='live',metavar='SRC',
 args = parser.parse_args()
 
 file_paths = [os.path.abspath(os.path.expanduser(values)) for values in args.input]
-
-
-
-"""
-parser.add_argument('','',dest='',help='')
-parser.add_argument('','',dest='',help='')
-"""
-
 
 
 BGR_COLOR = {'red': (0,0,255),
@@ -329,8 +318,6 @@ if __name__ == '__main__':
     RELATIVE_DESTINATION_PATH = str(datetime.date.today()) + "_distance/"
     chdir(paths[0])
  
-    if not os.path.exists(RELATIVE_DESTINATION_PATH + 'traces'):
-        os.makedirs(RELATIVE_DESTINATION_PATH + 'traces')
     if not os.path.exists(RELATIVE_DESTINATION_PATH + 'timing'):
         os.makedirs(RELATIVE_DESTINATION_PATH + 'timing')
     if not os.path.exists(RELATIVE_DESTINATION_PATH + 'positions'):
