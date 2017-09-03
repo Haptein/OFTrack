@@ -1,4 +1,5 @@
 #!/usr/bin/python2.7
+from config import RES, CC, SC, reload
 import tkFileDialog as filedialog
 import os, sys, time, datetime
 import Tkinter as tk
@@ -269,20 +270,6 @@ def trace(filename):
     file.close()
 
 
-#Argparsing
-parser = argparse.ArgumentParser(description='Animal tracking with OpenCV')
-parser.add_argument('input',nargs='*',help='Input files.')
-parser.add_argument('-o','--output',dest='out_destination',metavar='DES',help='Specify output destination.')
-parser.add_argument('-nv','--no-video',dest='out_video',action='store_false',help='Disable video file output.')
-parser.add_argument('-nc','--no-csv',dest='out_csv',action='store_false',help='Disable csv file output.')
-parser.add_argument('-nd','--no-display',dest='display',action='store_false',help='Disable video display.')
-parser.add_argument('-l','--live',dest='live',metavar='SRC',
-    help='Specify a camera for live video feed. It can be an integer or an ip address.')
-args = parser.parse_args()
-
-file_paths = [os.path.abspath(os.path.expanduser(values)) for values in args.input]
-
-
 BGR_COLOR = {'red': (0,0,255),
         'green': (127,255,0),
         'blue': (255,127,0),
@@ -298,12 +285,21 @@ tetragons = []
 name = ""
 
 
-#LOAD CONFIG
-from config import RES, CC, SC, reload
 if __name__ == '__main__':
+    #Load config
     conf_data = reload()
+    #Argparsing
+    parser = argparse.ArgumentParser(description='Animal tracking with OpenCV')
+    parser.add_argument('input',nargs='*',help='Input files.')
+    parser.add_argument('-o','--output',dest='out_destination',metavar='DES',help='Specify output destination.')
+    parser.add_argument('-nv','--no-video',dest='out_video',action='store_false',help='Disable video file output.')
+    parser.add_argument('-nc','--no-csv',dest='out_csv',action='store_false',help='Disable csv file output.')
+    parser.add_argument('-nd','--no-display',dest='display',action='store_false',help='Disable video display.')
+    parser.add_argument('-l','--live',dest='live',metavar='SRC',
+        help='Specify a camera for live video feed. It can be an integer or an ip address.')
+    args = parser.parse_args()
+    file_paths = [os.path.abspath(os.path.expanduser(values)) for values in args.input]
 
-if __name__ == '__main__':
     if not file_paths:
         tk.Tk().withdraw()
         file_paths=filedialog.askopenfilenames()
