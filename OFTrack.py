@@ -285,6 +285,7 @@ tetragons = []
 name = ""
 
 
+
 if __name__ == '__main__':
     #Load config
     conf_data = reload()
