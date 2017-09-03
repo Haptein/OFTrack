@@ -1,11 +1,10 @@
 #!/usr/bin/python2.7
-import numpy as np
-import cv2
+import tkFileDialog as filedialog
 import os, sys, time, datetime
 import Tkinter as tk
-import tkFileDialog as filedialog
-from os import chdir
-
+import numpy as np
+import argparse
+import cv2
 
 def counterclockwiseSort(tetragon):
     tetragon = sorted(tetragon, key = lambda e: e[0])
@@ -271,10 +270,7 @@ def trace(filename):
 
 
 #Argparsing
-import argparse
-
 parser = argparse.ArgumentParser(description='Animal tracking with OpenCV')
-
 parser.add_argument('input',nargs='*',help='Input files.')
 parser.add_argument('-o','--output',dest='out_destination',metavar='DES',help='Specify output destination.')
 parser.add_argument('-nv','--no-video',dest='out_video',action='store_false',help='Disable video file output.')
@@ -282,7 +278,6 @@ parser.add_argument('-nc','--no-csv',dest='out_csv',action='store_false',help='D
 parser.add_argument('-nd','--no-display',dest='display',action='store_false',help='Disable video display.')
 parser.add_argument('-l','--live',dest='live',metavar='SRC',
     help='Specify a camera for live video feed. It can be an integer or an ip address.')
-
 args = parser.parse_args()
 
 file_paths = [os.path.abspath(os.path.expanduser(values)) for values in args.input]
@@ -316,7 +311,7 @@ if __name__ == '__main__':
     files = [file.split('/')[-1] for file in file_paths]
     paths =['/'.join(p)+'/' for p in [path.split('/')[:-1] for path in file_paths]]
     RELATIVE_DESTINATION_PATH = str(datetime.date.today()) + "_distance/"
-    chdir(paths[0])
+    os.chdir(paths[0])
  
     if not os.path.exists(RELATIVE_DESTINATION_PATH + 'timing'):
         os.makedirs(RELATIVE_DESTINATION_PATH + 'timing')
