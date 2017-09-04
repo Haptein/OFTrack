@@ -203,10 +203,12 @@ def trace(filename):
             if not contours:
                 
                 frame = cv2.add(np.zeros_like(frame), imgTrack)
-                cv2.putText(frame, "Distance " + str('%.2f' % Distance) + 'm',
-                    (20,20), cv2.FONT_HERSHEY_DUPLEX, 0.5, BGR_COLOR['white'])
-                cv2.putText(frame, "Time " + str('%.0f sec' % (cap.get(cv2.CAP_PROP_POS_MSEC)/1000.)),
-                    (20,40), cv2.FONT_HERSHEY_DUPLEX, 0.5, BGR_COLOR['white'])
+                if args.video_dist:
+                    cv2.putText(frame, "Distance " + str('%.2f' % Distance) + 'm',
+                        (20,20), cv2.FONT_HERSHEY_DUPLEX, 0.5, BGR_COLOR['white'])
+                if args.video_time:
+                    cv2.putText(frame, "Time " + str('%.0f sec' % (cap.get(cv2.CAP_PROP_POS_MSEC)/1000.)),
+                        (20,20*(1 + args.video_dist)), cv2.FONT_HERSHEY_DUPLEX, 0.5, BGR_COLOR['white'])
                 cv2.circle(frame, (x,y), 5, BGR_COLOR['black'], -1, cv2.LINE_AA)
                 
                 layout = np.hstack((frame, frameColor))
@@ -247,10 +249,13 @@ def trace(filename):
             frame = cv2.bitwise_and(frame, frame, mask = thresh)
             frame = cv2.addWeighted(frame, 0.4, imgContour, 1.0, 0.)
 
-            cv2.putText(frame, "Distance " + str('%.2f' % Distance) + 'm',
-                (20,20), cv2.FONT_HERSHEY_DUPLEX, 0.5, BGR_COLOR['white'])
-            cv2.putText(frame, "Time " + str('%.0f sec' % (cap.get(cv2.CAP_PROP_POS_MSEC)/1000.)),
-                (20,40), cv2.FONT_HERSHEY_DUPLEX, 0.5, BGR_COLOR['white'])
+            if args.video_dist:
+                cv2.putText(frame, "Distance " + str('%.2f' % Distance) + 'm',
+                    (20,20), cv2.FONT_HERSHEY_DUPLEX, 0.5, BGR_COLOR['white'])
+            if args.video_time:
+                cv2.putText(frame, "Time " + str('%.0f sec' % (cap.get(cv2.CAP_PROP_POS_MSEC)/1000.)),
+                    (20,20*(1 + args.video_dist)), cv2.FONT_HERSHEY_DUPLEX, 0.5, BGR_COLOR['white'])
+            
             cv2.circle(frame, (x,y), 5, BGR_COLOR['black'], -1, cv2.LINE_AA)
             
             layout = np.hstack((frame, frameColor))
@@ -322,6 +327,8 @@ if __name__ == '__main__':
     parser.add_argument('-nd','--no-display',dest='display',action='store_false',help='Disable video display.')
     parser.add_argument('-l','--live',dest='live',metavar='SRC',default='',
         help='Specify a camera for live video feed. It can be an integer or an ip address.')
+    parser.add_argument('-ht','--hide-time',dest='video_time',action='store_false',help="Hide time.")
+    parser.add_argument('-hd','--hide-distance',dest='video_dist',action='store_false',help="Hide distance estimation.")
     args = parser.parse_args()
 
     file_paths = [os.path.abspath(os.path.expanduser(values)) for values in args.input]
