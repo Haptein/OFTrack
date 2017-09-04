@@ -114,7 +114,7 @@ def floorCrop(filename, conf_data, args):
 
 def trace(filename):
     global perspectiveMatrix,croppingPolygons,tetragons,name,WAIT_DELAY
-    global POS, DimX, DimY, SD, CC, cap, ext
+    global POS, DimX, DimY, SD, CC, cap, ext, mask
 
     POS=np.array([[-1,-1,-1]])###
     
@@ -125,8 +125,6 @@ def trace(filename):
         name = os.path.splitext(filename)[0]
         livedate = ''
     
-    
-    #cap = cv2.VideoCapture(filename)
     h, w = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(h*ratio)
     w = int(w*ratio)
@@ -136,9 +134,12 @@ def trace(filename):
     while not frame.any():
         ret, frame = cap.read()
 
-    frame = cv2.resize(frame,(w,h))#############
+    frame = cv2.resize(frame,(w,h))
+    mask =  cv2.resize(mask,(w,h))###
+    mask = np.dstack((mask,mask,mask)) ##
+
     if not CC:
-        frame = cv2.bitwise_not(frame)##########
+        frame = cv2.bitwise_not(frame)
     
     if args.out_video:
             video = cv2.VideoWriter(RELATIVE_DESTINATION_PATH + 'timing/' + name + livedate + "_trace." + ext,
@@ -156,12 +157,19 @@ def trace(filename):
         if frame is None:   # not logical
             break
         t = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.
-        
+
         frame = cv2.resize(frame,(w,h))
+
+
         frameColor = frame.copy()
         if not CC:
             frame = cv2.bitwise_not(frame)
+
+        if args.mask:
+            frameColor = frameColor * mask
+            frame = frame * mask
         
+
         if len(croppingPolygons[name]) == 4:
             cv2.drawContours(frameColor, [np.reshape(croppingPolygons[name], (4,2))], -1, BGR_COLOR['red'], 2, cv2.LINE_AA)
         else:
@@ -308,6 +316,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Animal tracking with OpenCV')
     parser.add_argument('input',nargs='*',help='Input files.')
     parser.add_argument('-o','--output',dest='out_destination',metavar='DES',default='',help='Specify output destination.')
+    parser.add_argument('-m','--mask',dest='mask',metavar='IMG',default='',help='Specify a mask image.')
     parser.add_argument('-nv','--no-video',dest='out_video',action='store_false',help='Disable video file output.')
     parser.add_argument('-nc','--no-csv',dest='out_csv',action='store_false',help='Disable csv file output.')
     parser.add_argument('-nd','--no-display',dest='display',action='store_false',help='Disable video display.')
@@ -316,6 +325,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     file_paths = [os.path.abspath(os.path.expanduser(values)) for values in args.input]
+    if args.mask:
+        mask = cv2.imread(args.mask,0)
+        _, mask = cv2.threshold(mask, 127, 1, cv2.THRESH_BINARY)
     if args.live:
         files = [args.live]
     else:
