@@ -195,7 +195,7 @@ def trace(filename):
             _, thresh = cv2.threshold(frameBlur, THRESHOLD_ANIMAL_VS_FLOOR, 255, cv2.THRESH_BINARY)
         else:
             frameGray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            frameBlur = cv2.GaussianBlur(frameGray, kernelSize, 0)
+            frameBlur = cv2.GaussianBlur(frameGray, (15,15), 0)
             thresh = fgbg.apply(frameBlur)
 
         _, contours, hierarchy = cv2.findContours(thresh.copy(),cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)

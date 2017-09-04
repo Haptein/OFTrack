@@ -1,3 +1,4 @@
+#!/usr/bin/python2.7
 import tkFileDialog as filedialog
 import Tkinter as tk
 import numpy as np
