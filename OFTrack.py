@@ -135,8 +135,10 @@ def trace(filename):
         ret, frame = cap.read()
 
     frame = cv2.resize(frame,(w,h))
-    mask =  cv2.resize(mask,(w,h))###
-    mask = np.dstack((mask,mask,mask)) ##
+
+    if args.mask:
+        mask =  cv2.resize(mask,(w,h))###
+        mask = np.dstack((mask,mask,mask)) ##
 
     if not CC:
         frame = cv2.bitwise_not(frame)
