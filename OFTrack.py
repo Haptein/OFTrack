@@ -1,5 +1,5 @@
 #!/usr/bin/python2.7
-from config import RES, CC, SC, reload
+from config import RES, CC, SC, EXT, reload
 import tkFileDialog as filedialog
 import os, sys, time, datetime
 import Tkinter as tk
@@ -52,17 +52,19 @@ def angle_cos(p0, p1, p2):
     return abs( np.dot(d1, d2) / np.sqrt( np.dot(d1, d1)*np.dot(d2, d2) ) )
 
 def floorCrop(filename, conf_data, args):
-    global perspectiveMatrix,tetragons,croppingPolygons,SD,name
-    global RENEW_TETRAGON, ratio, DimX, DimY, CC, FPS, THRESHOLD_ANIMAL_VS_FLOOR,cap
-    ###########
-    [DimX,DimY,CC,RA,FPS,res,THRESHOLD_ANIMAL_VS_FLOOR] = conf_data
+    global perspectiveMatrix,tetragons,croppingPolygons,SD, name
+    global RENEW_TETRAGON, ratio, DimX, DimY, CC, FPS, THRESHOLD_ANIMAL_VS_FLOOR, cap, ext
+    ########### Load config data
+    [DimX,DimY,CC,RA,FPS,res,ext,THRESHOLD_ANIMAL_VS_FLOOR] = conf_data
     res = RES[res].split('x')
+    ext = EXT[ext]
     SD = int(res[0]), int(res[1])
     RA = SC[RA]
     RA = RA.split('/')
     ratio = float(RA[0])/float(RA[1])
     ##############
-
+    
+    
     if args.live:
             name = 'Live'
     else:        
@@ -112,7 +114,7 @@ def floorCrop(filename, conf_data, args):
 
 def trace(filename):
     global perspectiveMatrix,croppingPolygons,tetragons,name,WAIT_DELAY
-    global POS, DimX, DimY, SD, CC,cap
+    global POS, DimX, DimY, SD, CC, cap, ext
 
     POS=np.array([[-1,-1,-1]])###
     
@@ -139,8 +141,9 @@ def trace(filename):
         frame = cv2.bitwise_not(frame)##########
     
     if args.out_video:
-        video = cv2.VideoWriter(RELATIVE_DESTINATION_PATH + 'timing/' + name + livedate + "_trace.avi",
-            cv2.VideoWriter_fourcc(*'X264'), FPS, SD, cv2.INTER_LINEAR)
+        else:
+            video = cv2.VideoWriter(RELATIVE_DESTINATION_PATH + 'timing/' + name + livedate + "_trace." + ext,
+                cv2.VideoWriter_fourcc(*'X264'), FPS, SD, cv2.INTER_LINEAR)
 
     imgTrack = np.zeros([ h, int(float(h)*float(DimX)/float(DimY)), 3 ],dtype='uint8')
     
@@ -159,7 +162,6 @@ def trace(filename):
         frameColor = frame.copy()
         if not CC:
             frame = cv2.bitwise_not(frame)
-
         
         if len(croppingPolygons[name]) == 4:
             cv2.drawContours(frameColor, [np.reshape(croppingPolygons[name], (4,2))], -1, BGR_COLOR['red'], 2, cv2.LINE_AA)

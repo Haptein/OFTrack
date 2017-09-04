@@ -5,7 +5,7 @@ import argparse
 import os, cv2
 
 #[Dimx,Dimy,CC,ratio,FPS,out_res,AvF_thresh]
-DEFAULTS = np.array([33,21,0,3,30,2,170])
+DEFAULTS = np.array([33,21,0,3,30,2,0,170])
 
 #Resolution options
 #RES = ["1920x1080","1280x720","960x540", "640x360"]
@@ -14,7 +14,8 @@ RES = ["3840x1080","2560x720","1920x540","1280x360"]
 CC = ["Dark Animal / Clear Surface", "Clear Animal / Dark Surface"] 
 #Scaling options
 SC = ["1/1","1/2","2/3","1/3","1/4"]
-
+#Video Formats
+EXT = ['avi','mp4','mkv']
 
 def reload():
     global DEFAULTS
@@ -23,7 +24,7 @@ def reload():
         print("Config file loaded successfully.")
     except:
         print("Couldn't load config file properly.")
-        np.savetxt('OFT.conf',DEFAULTS.reshape(1,7),delimiter=',',fmt='%s')
+        np.savetxt('OFT.conf',DEFAULTS.reshape(1,len(DEFAULTS)),delimiter=',',fmt='%s')
         conf_data = DEFAULTS
         print("New config file created.")
     return conf_data
@@ -37,17 +38,19 @@ class getparams(tk.Tk):
         self.wm_title("OF Tracker Configuration")
         self.eval('tk::PlaceWindow %s center' % self.winfo_pathname(self.winfo_id()))
         self.RES = tk.StringVar()
+        self.EXT = tk.StringVar()
         self.CC = tk.StringVar()
         self.SC = tk.StringVar()
 
         #Labels
         self.ST1 = tk.Label(self,text='Experimental Settings',font=(20))
-        self.ST2 = tk.Label(self,text='Online Visualization',font=(20))
-        self.ST3 = tk.Label(self,text='Output',font=(20))
+        self.ST2 = tk.Label(self,text='Display',font=(20))
+        self.ST3 = tk.Label(self,text='Video Output',font=(20))
         self.Ldimx = tk.Label(self,text='Length(cm)')
         self.Ldimy = tk.Label(self,text='Width(cm)')
         self.Lcc = tk.Label(self,text='Color Configuration')
-        self.Lsc = tk.Label(self,text='Scaling')
+        self.Lsc = tk.Label(self,text='Video Scaling')
+        self.Lext = tk.Label(self,text='Video Format')
         self.Lfps = tk.Label(self,text='FPS')
         self.Lres = tk.Label(self,text='Resolution')
         self.thresh = tk.Label(self,text='Threshold: '+str(AvF_thresh))
@@ -60,6 +63,7 @@ class getparams(tk.Tk):
         self.fps = tk.Entry(self,width=15)
         #self.res = tk.OptionMenu(self, self.RES, "1920x1080","1280x720","960x540", "640x360")
         self.res = tk.OptionMenu(self, self.RES, "3840x1080","2560x720","1920x540","1280x360")
+        self.ext = tk.OptionMenu(self, self.EXT, "avi","mp4","mkv")######
         self.cal = tk.Button(self, text="Calibrate", command=self.on_cal)
         self.save = tk.Button(self, text="Save Settings", command=self.on_save)
         self.exit = tk.Button(self, text="Exit", command=self.on_exit)
@@ -72,6 +76,7 @@ class getparams(tk.Tk):
         self.SC.set(SC[conf_data[3]])
         self.fps.insert(0,conf_data[4])
         self.RES.set(RES[conf_data[5]])
+        self.EXT.set(EXT[conf_data[6]])
 
         #Placement
         self.ST1.grid(row=0, column=0, pady=10)
@@ -91,8 +96,11 @@ class getparams(tk.Tk):
         self.fps.grid(row=8, column=1)
         self.Lres.grid(row=9, column=0)
         self.res.grid(row=9, column=1)
-        self.save.grid(row=10, column=0, pady=10)
-        self.exit.grid(row=10, column=1, pady=10)
+        self.Lext.grid(row=10, column=0)
+        self.ext.grid(row=10, column=1)
+    
+        self.save.grid(row=11, column=0, pady=10)
+        self.exit.grid(row=11, column=1, pady=10)
         self.lift()
 
     #conf_data:[Dimx,Dimy,CC,sc,FPS,res,AvF_thresh]    
@@ -105,9 +113,10 @@ class getparams(tk.Tk):
             sc = [i for i in range(len(SC)) if SC[i]==self.SC.get()][0]
             fps = int(self.fps.get())
             res = [i for i in range(len(RES)) if RES[i]==self.RES.get()][0]
-            Settings = np.array([dimx,dimy,cc,sc,fps,res,AvF_thresh]).reshape(1,7)
+            ext = [i for i in range(len(EXT)) if EXT[i]==self.EXT.get()][0]
+            Settings = np.array([dimx,dimy,cc,sc,fps,res,ext,AvF_thresh]).reshape(1,len(DEFAULTS))
             np.savetxt('OFT.conf',Settings,delimiter=',',fmt='%s')
-            conf_data = np.array([dimx,dimy,cc,sc,fps,res,AvF_thresh])
+            conf_data = np.array([dimx,dimy,cc,sc,fps,res,ext,AvF_thresh])
             print(conf_data)
         except:
             print('saving failed.')
@@ -119,7 +128,7 @@ class getparams(tk.Tk):
 
     def on_cal(self):
         global conf_data,SC,AvF_thresh
-        [DimX,DimY,cc,RA,FPS,res,THRESHOLD_ANIMAL_VS_FLOOR] = conf_data
+        [DimX,DimY,cc,RA,FPS,res,ext,THRESHOLD_ANIMAL_VS_FLOOR] = conf_data
         #res = RES[res].split('x')
         RA = SC[RA]
         RA = RA.split('/')
