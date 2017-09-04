@@ -141,7 +141,6 @@ def trace(filename):
         frame = cv2.bitwise_not(frame)##########
     
     if args.out_video:
-        else:
             video = cv2.VideoWriter(RELATIVE_DESTINATION_PATH + 'timing/' + name + livedate + "_trace." + ext,
                 cv2.VideoWriter_fourcc(*'X264'), FPS, SD, cv2.INTER_LINEAR)
 
