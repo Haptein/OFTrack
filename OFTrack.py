@@ -119,6 +119,9 @@ def trace(filename):
     POS=np.array([[-1,-1,-1]])
     kernelSize = (25, 25)
 
+    if args.overlay:
+        SD = SD[0]/2 , SD[1]
+
     if args.abs:
         fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows=False,history=500,varThreshold=64)
 
@@ -181,9 +184,9 @@ def trace(filename):
             frame = frame * mask
 
         if len(croppingPolygons[name]) == 4:
-            cv2.drawContours(frameColor, [np.reshape(croppingPolygons[name], (4,2))], -1, BGR_COLOR['red'], 2, cv2.LINE_AA)
+            cv2.drawContours(frameColor, [np.reshape(croppingPolygons[name], (4,2))], -1, BGR_COLOR['black'], 2, cv2.LINE_AA)
         else:
-            cv2.drawContours(frameColor, tetragons, -1, BGR_COLOR['red'], 2, cv2.LINE_AA)
+            cv2.drawContours(frameColor, tetragons, -1, BGR_COLOR['black'], 2, cv2.LINE_AA)
 
         frame = cv2.warpPerspective(frame, perspectiveMatrix[name], (w,h))#####
         #frame = cv2.warpPerspective(frame, perspectiveMatrix[name], ( int(float(h)*float(DimX)/float(DimY) ), h))#####
@@ -257,13 +260,23 @@ def trace(filename):
             imgPoints = cv2.circle(imgPoints, (x,y), 5, BGR_COLOR['black'], -1)
 
             # Draw a track of the animal
-            imgTrack = cv2.addWeighted(np.zeros_like(imgTrack), 0.85, cv2.line(imgTrack, (x,y), (_x,_y),
-                (255, 127, int(cap.get(cv2.CAP_PROP_POS_AVI_RATIO)*255)), 1, cv2.LINE_AA), 0.98, 0.)
+            #imgTrack = cv2.addWeighted(np.zeros_like(imgTrack), 0.85, cv2.line(imgTrack, (x,y), (_x,_y),
+            #    (255, 127, int(cap.get(cv2.CAP_PROP_POS_AVI_RATIO)*255)), 1, cv2.LINE_AA), 0.98, 0.)
+            imgTrack = cv2.addWeighted(np.zeros_like(imgTrack), 1, cv2.line(imgTrack, (x,y), (_x,_y),
+                (255, 127, int(cap.get(cv2.CAP_PROP_POS_AVI_RATIO)*255)), 1, cv2.LINE_AA), 0.99, 0.)
 
             imgContour = cv2.add(imgPoints, imgTrack)
 
             frame = cv2.bitwise_and(frame, frame, mask = thresh)
             frame = cv2.addWeighted(frame, 0.4, imgContour, 1.0, 0.)
+            cv2.circle(frame, (x,y), 5, BGR_COLOR['black'], -1, cv2.LINE_AA)
+
+            ##########
+            if args.overlay:
+                re, invper = cv2.invert(perspectiveMatrix[name])
+                invimgTrack = cv2.warpPerspective(cv2.resize(frame,(w,h)), invper, (w,h), cv2.WARP_INVERSE_MAP)#####
+                frame = cv2.addWeighted(frameColor, 0.8,invimgTrack, 0.4, 0)
+            ##########
 
             if args.video_dist:
                 cv2.putText(frame, "Distance " + str('%.2f' % Distance) + 'm',
@@ -272,9 +285,12 @@ def trace(filename):
                 cv2.putText(frame, "Time " + str('%.0f sec' % (cap.get(cv2.CAP_PROP_POS_MSEC)/1000.)),
                     (20,20*(1 + args.video_dist)), cv2.FONT_HERSHEY_DUPLEX, 0.5, BGR_COLOR['white'])
             
-            cv2.circle(frame, (x,y), 5, BGR_COLOR['black'], -1, cv2.LINE_AA)
             
-            layout = np.hstack((frame, frameColor))
+            if args.overlay:
+                layout = frame
+            else:
+                layout = np.hstack((frame, frameColor))
+            
 
             if args.display:
                 cv2.imshow('Open Field Trace of ' + name, layout)
@@ -339,6 +355,7 @@ if __name__ == '__main__':
     parser.add_argument('-o','--output',dest='out_destination',metavar='DES',default='',help='Specify output destination.')
     parser.add_argument('-m','--mask',dest='mask',metavar='IMG',default='',help='Specify a mask image.')
     parser.add_argument('-a','--abs',dest='abs',action='store_true',help="Automatic background subtraction.")
+    parser.add_argument('-ov','--overlay',dest='overlay',action='store_true',help='Overlay video with trace instead of side by side view.')
     parser.add_argument('-nv','--no-video',dest='out_video',action='store_false',help='Disable video file output.')
     parser.add_argument('-nc','--no-csv',dest='out_csv',action='store_false',help='Disable csv file output.')
     parser.add_argument('-nd','--no-display',dest='display',action='store_false',help='Disable video display.')

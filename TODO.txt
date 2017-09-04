@@ -3,7 +3,6 @@ OFTrack
 Add a way to stop process correctly when display is disabled.
 Add option to save/load roi selections.
 Add circular/elliptical roi selection option.
-Add option to overlay trace to video source insead of displaying it separately.
 
 Config
 Add circular/elliptical dimensions input.
