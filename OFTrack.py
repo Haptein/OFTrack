@@ -116,8 +116,12 @@ def trace(filename):
     global perspectiveMatrix,croppingPolygons,tetragons,name,WAIT_DELAY
     global POS, DimX, DimY, SD, CC, cap, ext, mask
 
-    POS=np.array([[-1,-1,-1]])###
-    
+    POS=np.array([[-1,-1,-1]])
+    kernelSize = (25, 25)
+
+    if args.abs:
+        fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows=False,history=500,varThreshold=64)
+
     if args.live:
         name = 'Live'
         livedate = time.strftime(" %Y-%m-%d[%H:%M:%S]")
@@ -125,28 +129,34 @@ def trace(filename):
         name = os.path.splitext(filename)[0]
         livedate = ''
     
+    if args.mask:
+        mask =  cv2.resize(mask,(w,h))
+        mask = np.dstack((mask,mask,mask))
+
     h, w = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(h*ratio)
     w = int(w*ratio)
 
-    # Take first non-null frame and find corners within it
     ret, frame = cap.read()
     while not frame.any():
         ret, frame = cap.read()
 
-    frame = cv2.resize(frame,(w,h))
-
-    if args.mask:
-        mask =  cv2.resize(mask,(w,h))###
-        mask = np.dstack((mask,mask,mask)) ##
-
-    if not CC:
-        frame = cv2.bitwise_not(frame)
+    #Process first frame if automatic bg subtraction is enabled
+    if args.abs:
+        frame = cv2.resize(frame,(w,h))
+        if not CC:
+            frame = cv2.bitwise_not(frame)
+        frame = cv2.warpPerspective(frame, perspectiveMatrix[name], (w,h))
+        frame = cv2.resize(frame,( int(float(h)*float(DimX)/float(DimY) ), h))
+        frameGray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        frameBlur = cv2.GaussianBlur(frameGray, kernelSize, 0)
+        thresh = fgbg.apply(frameBlur)
     
     if args.out_video:
             video = cv2.VideoWriter(RELATIVE_DESTINATION_PATH + 'timing/' + name + livedate + "_trace." + ext,
                 cv2.VideoWriter_fourcc(*'X264'), FPS, SD, cv2.INTER_LINEAR)
 
+    #Init array containing trace
     imgTrack = np.zeros([ h, int(float(h)*float(DimX)/float(DimY)), 3 ],dtype='uint8')
     
     start = time.time()
@@ -155,22 +165,20 @@ def trace(filename):
     
     while frame is not None:
         ret, frame = cap.read()
-        
-        if frame is None:   # not logical
+        if not ret:
             break
+        
         t = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.
-
+        
         frame = cv2.resize(frame,(w,h))
-
-
         frameColor = frame.copy()
+
         if not CC:
             frame = cv2.bitwise_not(frame)
 
         if args.mask:
             frameColor = frameColor * mask
             frame = frame * mask
-        
 
         if len(croppingPolygons[name]) == 4:
             cv2.drawContours(frameColor, [np.reshape(croppingPolygons[name], (4,2))], -1, BGR_COLOR['red'], 2, cv2.LINE_AA)
@@ -181,11 +189,17 @@ def trace(filename):
         #frame = cv2.warpPerspective(frame, perspectiveMatrix[name], ( int(float(h)*float(DimX)/float(DimY) ), h))#####
         frame = cv2.resize(frame,( int(float(h)*float(DimX)/float(DimY) ), h))#############
 
-        frameGray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        kernelSize = (25, 25)
-        frameBlur = cv2.GaussianBlur(frameGray, kernelSize, 0)
-        _, thresh = cv2.threshold(frameBlur, THRESHOLD_ANIMAL_VS_FLOOR, 255, cv2.THRESH_BINARY)
+        if not args.abs:
+            frameGray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frameBlur = cv2.GaussianBlur(frameGray, kernelSize, 0)
+            _, thresh = cv2.threshold(frameBlur, THRESHOLD_ANIMAL_VS_FLOOR, 255, cv2.THRESH_BINARY)
+        else:
+            frameGray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frameBlur = cv2.GaussianBlur(frameGray, kernelSize, 0)
+            thresh = fgbg.apply(frameBlur)
+
         _, contours, hierarchy = cv2.findContours(thresh.copy(),cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+
         if contours:
             # Find a contour with the biggest area (animal most likely)
             contour = contours[np.argmax(map(cv2.contourArea, contours))]
@@ -285,7 +299,7 @@ def trace(filename):
             POS = np.append(POS,[[t,abs_x,abs_y]],axis=0)# Time & Positions for csv file
     
     if args.out_csv:
-        POS = np.delete(POS,0,axis=0)###
+        POS = np.delete(POS,0,axis=0)
         np.savetxt(RELATIVE_DESTINATION_PATH + 'positions/' + '[' + str(DimX) + 'x' + str(DimY) + '] ' + name + '.csv',
             POS, fmt = '%.2f', delimiter = ',')
     
@@ -324,6 +338,7 @@ if __name__ == '__main__':
     parser.add_argument('input',nargs='*',help='Input files.')
     parser.add_argument('-o','--output',dest='out_destination',metavar='DES',default='',help='Specify output destination.')
     parser.add_argument('-m','--mask',dest='mask',metavar='IMG',default='',help='Specify a mask image.')
+    parser.add_argument('-a','--abs',dest='abs',action='store_true',help="Automatic background subtraction.")
     parser.add_argument('-nv','--no-video',dest='out_video',action='store_false',help='Disable video file output.')
     parser.add_argument('-nc','--no-csv',dest='out_csv',action='store_false',help='Disable csv file output.')
     parser.add_argument('-nd','--no-display',dest='display',action='store_false',help='Disable video display.')
