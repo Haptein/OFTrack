@@ -13,13 +13,14 @@ def counterclockwiseSort(tetragon):
     tetragon[2:4] = sorted(tetragon[2:4], key = lambda e: e[1], reverse = True)
     return tetragon
 
-
 # mouse callback function for drawing a cropping polygon
 def drawFloorCrop(event,x,y,flags,params):
     global perspectiveMatrix,name,RENEW_TETRAGON
     imgCroppingPolygon = np.zeros_like(params['imgFloorCorners'])
+
     if event == cv2.EVENT_RBUTTONUP:
         cv2.destroyWindow('Floor Corners for ' + name)
+
     if len(params['croppingPolygons'][name]) > 4 and event == cv2.EVENT_LBUTTONUP:
         #RENEW_TETRAGON = True##################################################################################
         w = params['imgFloorCorners'].shape[1]###
@@ -33,6 +34,7 @@ def drawFloorCrop(event,x,y,flags,params):
         cv2.destroyWindow('Floor Corners for ' + name)
         tetragonVerticesUpd = np.float32([[0,0],[0,h],[w,h],[w,0]])
         perspectiveMatrix[name] = cv2.getPerspectiveTransform(tetragonVertices, tetragonVerticesUpd)
+
     if event == cv2.EVENT_LBUTTONDOWN:
         if len(params['croppingPolygons'][name]) == 4 and RENEW_TETRAGON:
             params['croppingPolygons'][name] = np.array([[0,0]])
@@ -40,6 +42,7 @@ def drawFloorCrop(event,x,y,flags,params):
         if len(params['croppingPolygons'][name]) == 1:
             params['croppingPolygons'][name][0] = [x, y]
         params['croppingPolygons'][name] = np.append(params['croppingPolygons'][name], [[x, y]], axis=0)
+
     if event == cv2.EVENT_MOUSEMOVE and not (len(params['croppingPolygons'][name]) == 4 and RENEW_TETRAGON):
         params['croppingPolygons'][name][-1] = [x, y]   
         if len(params['croppingPolygons'][name]) > 1:
@@ -63,7 +66,6 @@ def floorCrop(filename, conf_data, args):
     RA = RA.split('/')
     ratio = float(RA[0])/float(RA[1])
     ##############
-    
     
     if args.live:
             name = 'Live'
@@ -97,6 +99,7 @@ def floorCrop(filename, conf_data, args):
     #cv2.resizeWindow('Floor Corners for ' + name, w,h)#########
 
     cv2.setMouseCallback('Floor Corners for ' + name, drawFloorCrop, {'imgFloorCorners': imgFloorCorners, 'croppingPolygons': croppingPolygons})
+    #k = cv2.waitKey(WAIT_DELAY) & 0xff
     k = cv2.waitKey(0)
     if k == 27:
         if __name__ == '__main__':
@@ -119,11 +122,13 @@ def trace(filename):
     POS=np.array([[-1,-1,-1]])
     kernelSize = (25, 25)
 
+    #If trace overlay is enabled fix vide ratio to 16:9 and generate the inverse pmatrix
     if args.overlay:
         SD = SD[0]/2 , SD[1]
+        re, invper = cv2.invert(perspectiveMatrix[name])
 
     if args.abs:
-        fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows=False,history=500,varThreshold=64)
+        fgbg = cv2.createBackgroundSubtractorMOG2(detectShadows=False,history=600,varThreshold=72)
 
     if args.live:
         name = 'Live'
@@ -140,7 +145,7 @@ def trace(filename):
     h = int(h*ratio)
     w = int(w*ratio)
 
-    ret, frame = cap.read()
+    ret, frame = cap.read() #Perhaps we dont need to re-read a frame if we've got the one read in filecrop
     while not frame.any():
         ret, frame = cap.read()
 
@@ -221,17 +226,24 @@ def trace(filename):
         if args.display or args.out_video:
             if not contours:
                 
-                frame = cv2.add(np.zeros_like(frame), imgTrack)
+                frame = imgTrack
+                
+                if args.overlay:
+                    invimgTrack = cv2.warpPerspective(cv2.resize(frame,(w,h)), invper, (w,h), cv2.WARP_INVERSE_MAP)
+                    frame = cv2.addWeighted(frameColor, 0.8,invimgTrack, 0.4, 0)
+
                 if args.video_dist:
                     cv2.putText(frame, "Distance " + str('%.2f' % Distance) + 'm',
                         (20,20), cv2.FONT_HERSHEY_DUPLEX, 0.5, BGR_COLOR['white'])
                 if args.video_time:
                     cv2.putText(frame, "Time " + str('%.0f sec' % (cap.get(cv2.CAP_PROP_POS_MSEC)/1000.)),
                         (20,20*(1 + args.video_dist)), cv2.FONT_HERSHEY_DUPLEX, 0.5, BGR_COLOR['white'])
-                cv2.circle(frame, (x,y), 5, BGR_COLOR['black'], -1, cv2.LINE_AA)
-                
-                layout = np.hstack((frame, frameColor))
-
+            
+                if args.overlay:
+                    layout = frame
+                else:
+                    layout = np.hstack((frame, frameColor))
+            
                 if args.display:
                     cv2.imshow('Open Field Trace of ' + name, layout)
 
@@ -260,8 +272,6 @@ def trace(filename):
             imgPoints = cv2.circle(imgPoints, (x,y), 5, BGR_COLOR['black'], -1)
 
             # Draw a track of the animal
-            #imgTrack = cv2.addWeighted(np.zeros_like(imgTrack), 0.85, cv2.line(imgTrack, (x,y), (_x,_y),
-            #    (255, 127, int(cap.get(cv2.CAP_PROP_POS_AVI_RATIO)*255)), 1, cv2.LINE_AA), 0.98, 0.)
             imgTrack = cv2.addWeighted(np.zeros_like(imgTrack), 1, cv2.line(imgTrack, (x,y), (_x,_y),
                 (255, 127, int(cap.get(cv2.CAP_PROP_POS_AVI_RATIO)*255)), 1, cv2.LINE_AA), 0.99, 0.)
 
@@ -271,12 +281,9 @@ def trace(filename):
             frame = cv2.addWeighted(frame, 0.4, imgContour, 1.0, 0.)
             cv2.circle(frame, (x,y), 5, BGR_COLOR['black'], -1, cv2.LINE_AA)
 
-            ##########
             if args.overlay:
-                re, invper = cv2.invert(perspectiveMatrix[name])
-                invimgTrack = cv2.warpPerspective(cv2.resize(frame,(w,h)), invper, (w,h), cv2.WARP_INVERSE_MAP)#####
+                invimgTrack = cv2.warpPerspective(cv2.resize(frame,(w,h)), invper, (w,h), cv2.WARP_INVERSE_MAP)
                 frame = cv2.addWeighted(frameColor, 0.8,invimgTrack, 0.4, 0)
-            ##########
 
             if args.video_dist:
                 cv2.putText(frame, "Distance " + str('%.2f' % Distance) + 'm',
@@ -284,14 +291,12 @@ def trace(filename):
             if args.video_time:
                 cv2.putText(frame, "Time " + str('%.0f sec' % (cap.get(cv2.CAP_PROP_POS_MSEC)/1000.)),
                     (20,20*(1 + args.video_dist)), cv2.FONT_HERSHEY_DUPLEX, 0.5, BGR_COLOR['white'])
-            
-            
+                        
             if args.overlay:
                 layout = frame
             else:
                 layout = np.hstack((frame, frameColor))
             
-
             if args.display:
                 cv2.imshow('Open Field Trace of ' + name, layout)
 
