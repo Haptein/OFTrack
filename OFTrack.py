@@ -1,4 +1,6 @@
 #!/usr/bin/python2.7
+# -*- coding: utf-8 -*-
+#from __future__ import print_function
 from config import RES, CC, SC, EXT, reload
 import tkFileDialog as filedialog
 import os, sys, time, datetime
@@ -12,6 +14,36 @@ def counterclockwiseSort(tetragon):
     tetragon[0:2] = sorted(tetragon[0:2], key = lambda e: e[1])
     tetragon[2:4] = sorted(tetragon[2:4], key = lambda e: e[1], reverse = True)
     return tetragon
+
+def angle_cos(p0, p1, p2):
+    d1, d2 = (p0-p1).astype('float'), (p2-p1).astype('float')
+    return abs( np.dot(d1, d2) / np.sqrt( np.dot(d1, d1)*np.dot(d2, d2) ) )
+
+def progressBar (iteration, total, length = 50, fill = '█'):
+    global time_params
+
+    fiee = 120 #Frame interval for eta estimation
+    if iteration%(2*fiee) == 0:
+        time_params[1] = time.time()
+    elif iteration%fiee == 0:
+        time_params[0] = time.time()
+    
+    eta = (total-iteration) / ( fiee / (max(time_params)-min(time_params)) )
+    hors , secs = divmod(int(eta),3600)
+    mins , secs = divmod(secs,60)
+
+    prefix = 'File %s/%s'%(file_num+1,len(files))
+    suffix = 'Time left: ' + ('%s hours, '%hors if hors>0 else '')\
+        + ('%s minutes and '%mins if mins>0 else '') + '%s seconds.'%secs + 25*' '
+
+    
+    percent = ("{0:." + str(1) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    sys.stdout.write('%s: |%s| %s%% %s\r' % (prefix, bar, percent, suffix))
+    sys.stdout.flush()
+    if iteration == total and file_num+1 == len(files): 
+        print('Completed!')
 
 # mouse callback function for drawing a cropping polygon
 def drawFloorCrop(event,x,y,flags,params):
@@ -50,9 +82,6 @@ def drawFloorCrop(event,x,y,flags,params):
             imgCroppingPolygon = cv2.addWeighted(params['imgFloorCorners'], 1.0, imgCroppingPolygon, 0.5, 0.)
             cv2.imshow('Floor Corners for ' + name, imgCroppingPolygon)
 
-def angle_cos(p0, p1, p2):
-    d1, d2 = (p0-p1).astype('float'), (p2-p1).astype('float')
-    return abs( np.dot(d1, d2) / np.sqrt( np.dot(d1, d1)*np.dot(d2, d2) ) )
 
 def floorCrop(filename, conf_data, args):
     global perspectiveMatrix,tetragons,croppingPolygons,SD, name
@@ -313,11 +342,13 @@ def trace(filename):
                     WAIT_DELAY = 1  # play as fast as possible
         _x = x
         _y = y
-
         abs_x = float(DimY)*float(x)/float(h)
         abs_y = float(y)/float(h)*float(DimY)
+
         if args.out_csv:
             POS = np.append(POS,[[t,abs_x,abs_y]],axis=0)# Time & Positions for csv file
+
+        progressBar(cap.get(cv2.CAP_PROP_POS_FRAMES),cap.get(cv2.CAP_PROP_FRAME_COUNT))
     
     if args.out_csv:
         POS = np.delete(POS,0,axis=0)
@@ -330,7 +361,6 @@ def trace(filename):
     if args.out_video:
         video.release()
     
-    print(filename + "\tdistance %.2f\t" % Distance + 'm ' + "processing/real time %.1f" % float(time.time()-start) + "/%.1f s" % t)
     file.write(name + ",%.2f" % Distance + ",%.1f\n" % t)
     file.close()
 
@@ -395,7 +425,9 @@ if __name__ == '__main__':
     file.write("animal,distance [metres],run time [seconds]\n")
     file.close()
 
-    for filename in files:
+    #for filename in files:
+    for file_num, filename in enumerate(files):
+        time_params = [time.time(),time.time()+1]
         file = open(RELATIVE_DESTINATION_PATH + "distances.csv", 'a')
         floorCrop(filename, conf_data, args)
 

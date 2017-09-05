@@ -1,7 +1,6 @@
 
 OFTrack
 Add a way to stop process correctly when display is disabled.
-Add a cli progress bar.
 Add option to save/load roi selections.
 Add circular/elliptical roi selection option.
 
