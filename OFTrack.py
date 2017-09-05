@@ -151,6 +151,10 @@ def trace(filename):
     POS=np.array([[-1,-1,-1]])
     kernelSize = (25, 25)
 
+    h, w = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    h = int(h*ratio)
+    w = int(w*ratio)
+
     #If trace overlay is enabled fix vide ratio to 16:9 and generate the inverse pmatrix
     if args.overlay:
         SD = SD[0]/2 , SD[1]
@@ -169,10 +173,6 @@ def trace(filename):
     if args.mask:
         mask =  cv2.resize(mask,(w,h))
         mask = np.dstack((mask,mask,mask))
-
-    h, w = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    h = int(h*ratio)
-    w = int(w*ratio)
 
     ret, frame = cap.read() #Perhaps we dont need to re-read a frame if we've got the one read in filecrop
     while not frame.any():
