@@ -17,15 +17,17 @@ CC = ["Dark Animal / Clear Surface", "Clear Animal / Dark Surface"]
 SC = ["1/1","1/2","2/3","1/3","1/4"]
 #Video Formats
 EXT = ['avi','mp4','mkv']
+#Config file name
+cfile = 'oft.conf'
 
 def reload():
     global DEFAULTS
     try:
-        conf_data = np.genfromtxt("OFT.conf",delimiter=",",dtype=None)
+        conf_data = np.genfromtxt(cfile,delimiter=",",dtype=None)
         print("Config file loaded successfully.")
     except:
         print("Couldn't load config file properly.")
-        np.savetxt('OFT.conf',DEFAULTS.reshape(1,len(DEFAULTS)),delimiter=',',fmt='%s')
+        np.savetxt(cfile,DEFAULTS.reshape(1,len(DEFAULTS)),delimiter=',',fmt='%s')
         conf_data = DEFAULTS
         print("New config file created.")
     return conf_data
@@ -116,7 +118,7 @@ class getparams(tk.Tk):
             res = [i for i in range(len(RES)) if RES[i]==self.RES.get()][0]
             ext = [i for i in range(len(EXT)) if EXT[i]==self.EXT.get()][0]
             Settings = np.array([dimx,dimy,cc,sc,fps,res,ext,AvF_thresh]).reshape(1,len(DEFAULTS))
-            np.savetxt('OFT.conf',Settings,delimiter=',',fmt='%s')
+            np.savetxt(cfile,Settings,delimiter=',',fmt='%s')
             conf_data = np.array([dimx,dimy,cc,sc,fps,res,ext,AvF_thresh])
             print(conf_data)
         except:
