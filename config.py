@@ -224,13 +224,16 @@ class getparams(tk.Tk):
                 cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 continue
 
-            calframe = cv2.resize(frame,(w,h))
+            frame = cv2.resize(frame,(w,h))
+            frameColor = frame.copy()
+
+            if not cc:
+                frame = cv2.bitwise_not(frame)
 
             #Apply mask if provided
             if args.mask:
-                calframe = calframe * mask
-
-            frameColor = calframe.copy()
+                frameColor = frameColor * mask
+                frame = frame * mask
 
             #Text and text shadows
             txtoff = 1
@@ -248,10 +251,7 @@ class getparams(tk.Tk):
             cv2.putText(frameColor, 'Press Space to set a new threshold value, Esc to exit.',
                 (10,h-30), cv2.FONT_HERSHEY_DUPLEX, 0.6, BGR_COLOR['red'])
 
-            if not cc:
-                calframe = cv2.bitwise_not(calframe)
-
-            frame = cv2.warpPerspective(calframe, perspectiveMatrix[name], (w,h))###
+            frame = cv2.warpPerspective(frame, perspectiveMatrix[name], (w,h))###
             frameGray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
             frameBlur = cv2.GaussianBlur(frameGray, kernelSize, 0)
