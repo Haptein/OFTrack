@@ -15,11 +15,7 @@ def counterclockwiseSort(tetragon):
     tetragon[2:4] = sorted(tetragon[2:4], key = lambda e: e[1], reverse = True)
     return tetragon
 
-def angle_cos(p0, p1, p2):
-    d1, d2 = (p0-p1).astype('float'), (p2-p1).astype('float')
-    return abs( np.dot(d1, d2) / np.sqrt( np.dot(d1, d1)*np.dot(d2, d2) ) )
-
-def progressBar (iteration, total, length = 50, fill = '█'):
+def progressBar(iteration, total, length = 50, fill = '█'):
     global time_params
 
     fiee = 120 #Frame interval for eta estimation
@@ -36,7 +32,6 @@ def progressBar (iteration, total, length = 50, fill = '█'):
     suffix = 'Time left: ' + ('%s hours, '%hors if hors>0 else '')\
         + ('%s minutes and '%mins if mins>0 else '') + '%s seconds.'%secs + 25*' '
 
-    
     percent = ("{0:." + str(1) + "f}").format(100 * (iteration / float(total)))
     filledLength = int(length * iteration // total)
     bar = fill * filledLength + '-' * (length - filledLength)
