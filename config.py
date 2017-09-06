@@ -106,7 +106,7 @@ class getparams(tk.Tk):
         self.exit.grid(row=11, column=1, pady=10)
         self.lift()
 
-    #conf_data:[Dimx,Dimy,CC,sc,FPS,res,AvF_thresh]    
+    #conf_data:[Dimx,Dimy,CC,sc,FPS,res,ext,AvF_thresh]    
     def on_save(self):
         global DEFAULTS, RES, CC, SC, AvF_thresh, conf_data
         try:
@@ -132,7 +132,6 @@ class getparams(tk.Tk):
     def on_cal(self):
         global conf_data,SC,AvF_thresh
         [DimX,DimY,cc,RA,FPS,res,ext,THRESHOLD_ANIMAL_VS_FLOOR] = conf_data
-        #res = RES[res].split('x')
         RA = SC[RA]
         RA = RA.split('/')
         ratio = float(RA[0])/float(RA[1])
@@ -146,32 +145,58 @@ class getparams(tk.Tk):
             name = os.path.splitext(filename)[0]
 
         if not filename:  return
-        perspectiveMatrix = floorCrop(filename, conf_data, args)
-        cap = cv2.VideoCapture(filename)
 
+        cap = cv2.VideoCapture(filename)
         h, w = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         h = int(h*ratio)
         w = int(w*ratio)
-        
+
         ret, frame = cap.read()
         nullframes = 0
         while not frame.any():
             ret, frame = cap.read()
-            print('no frames yet')
             nullframes += 1
             if nullframes > 50:
                 break
-        if ret: print('Frame found.')
+        
+        if ret:
+            print('Frame found.')
         else: 
             print('No frames found.')
             return
 
+        #If mask image not yet read.
+        if args.mask and ('mask' not in globals()):
+            #Read mask image
+            mask = cv2.imread(args.mask,0)
+            #Binarize mask
+            _, mask = cv2.threshold(mask, 127, 1, cv2.THRESH_BINARY)
+            #Resize to display size
+            mask = cv2.resize(mask,(w,h))
+            #Get contours, the minimum area rectangle containing the biggest contour and get its vertices
+            ret,mask_cont,hier = cv2.findContours(mask, 1, 2)
+            mask_cont = mask_cont[np.argmax(map(cv2.contourArea, mask_cont))]
+            rect = cv2.minAreaRect(mask_cont)
+            box = cv2.boxPoints(rect)
+
+            croppingPolygons = np.uint64(counterclockwiseSort(box))
+            tetragonVertices = np.float32(croppingPolygons)
+            tetragonVerticesUpd = np.float32([[0,0],[0,h],[w,h],[w,0]])        
+            #Generate perspectice matrix
+            perspectiveMatrix = dict( {name:cv2.getPerspectiveTransform(tetragonVertices, tetragonVerticesUpd)} )
+            #Make mask the same dimensions as frames read
+            mask = np.dstack((mask,mask,mask))
+        else:
+            perspectiveMatrix = floorCrop(filename, conf_data, args)
+        
+        
         if  len(perspectiveMatrix[name])==0:
             print('no perspective')
             return
 
         kernelSize = (25, 25)
 
+        #Creating a trackbar really needs a function input
         def nothing(x):
             pass
 
@@ -188,6 +213,7 @@ class getparams(tk.Tk):
 
             THRESHOLD_ANIMAL_VS_FLOOR = cv2.getTrackbarPos('Threshold','Calibration')
 
+            #Press spacebar to set threshold value
             if k == 32:
                 AvF_thresh = THRESHOLD_ANIMAL_VS_FLOOR
                 self.thresh['text'] = 'Threshold: ' + str(AvF_thresh)
@@ -199,9 +225,14 @@ class getparams(tk.Tk):
                 continue
 
             calframe = cv2.resize(frame,(w,h))
+
+            #Apply mask if provided
+            if args.mask:
+                calframe = calframe * mask
+
             frameColor = calframe.copy()
 
-            #Text Shadows
+            #Text and text shadows
             txtoff = 1
             cv2.putText(frameColor, 'Set threshold so that the animal/object',
                 (10+txtoff,20+txtoff), cv2.FONT_HERSHEY_DUPLEX, 0.5, BGR_COLOR['black'])
@@ -227,7 +258,6 @@ class getparams(tk.Tk):
             _, thresh = cv2.threshold(frameBlur, THRESHOLD_ANIMAL_VS_FLOOR, 255, cv2.THRESH_BINARY)
             _, contours, hierarchy = cv2.findContours(thresh.copy(),cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
-            #print(THRESHOLD_ANIMAL_VS_FLOOR,len(contours))
             if len(contours)>0:
                 contour = contours[np.argmax(map(cv2.contourArea, contours))]
                 M = cv2.moments(contour)
@@ -261,7 +291,7 @@ class getparams(tk.Tk):
 
 
 if __name__ == '__main__':
-    from OFTrack import floorCrop, BGR_COLOR
+    from OFTrack import floorCrop, BGR_COLOR, counterclockwiseSort
     #Argparsing
     parser = argparse.ArgumentParser(description='Animal tracking with OpenCV')
     parser.add_argument('-l','--live',dest='live',metavar='SRC',default='',
