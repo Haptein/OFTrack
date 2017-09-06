@@ -20,6 +20,8 @@ and its GUI config utility with:
 ```
 python config.py
 ```
+
+<b> For best results configure your settings before tracking stuff.</b>
  
 Theres also several cli options.
 ```
