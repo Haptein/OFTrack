@@ -262,10 +262,16 @@ class getparams(tk.Tk):
 
 if __name__ == '__main__':
     from OFTrack import floorCrop, BGR_COLOR
+    #Argparsing
     parser = argparse.ArgumentParser(description='Animal tracking with OpenCV')
     parser.add_argument('-l','--live',dest='live',metavar='SRC',default='',
         help='Specify a camera for live video calibration. It can be an integer or an ip address.')
+    parser.add_argument('-m','--mask',dest='mask',metavar='IMG',default='',help='Specify a mask image.')
     args = parser.parse_args()
+
+    #Load data
     conf_data = reload()
     AvF_thresh = conf_data[-1]
+
+    #Launch GUI
     getparams().mainloop()
