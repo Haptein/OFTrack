@@ -211,7 +211,7 @@ def trace(filename):
     h = int(h*ratio)
     w = int(w*ratio)
 
-    #If trace overlay is enabled fix vide ratio to 16:9 and generate the inverse pmatrix
+    #If trace overlay is enabled fix vide ratio to 16:9 and generate the inverse perspective matrix
     if args.overlay:
         SD = SD[0]/2 , SD[1]
         re, invper = cv2.invert(perspectiveMatrix[name])
@@ -331,6 +331,7 @@ def trace(filename):
                 frame = imgTrack
                 
                 if args.overlay:
+                    #Inverse perspective transformation
                     invimgTrack = cv2.warpPerspective(cv2.resize(frame,(w,h)), invper, (w,h), cv2.WARP_INVERSE_MAP)
                     frame = cv2.addWeighted(frameColor, 0.8,invimgTrack, 0.4, 0)
 
@@ -422,7 +423,8 @@ def trace(filename):
             POS = np.append(POS,[[t,abs_x,abs_y]],axis=0)# Time & XY Positions for csv file
 
         #Update cli progress bar
-        progressBar(cap.get(cv2.CAP_PROP_POS_FRAMES),cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if not args.live:
+            progressBar(cap.get(cv2.CAP_PROP_POS_FRAMES),cap.get(cv2.CAP_PROP_FRAME_COUNT))
     
     if args.out_csv:
         POS = np.delete(POS,0,axis=0)
@@ -474,6 +476,8 @@ if __name__ == '__main__':
 
     #Get full paths
     file_paths = [os.path.abspath(os.path.expanduser(values)) for values in args.input]
+    if args.out_destination:
+        args.out_destination = os.path.abspath(os.path.expanduser(args.out_destination)) + '/'
     if args.mask:
         args.mask = os.path.abspath(os.path.expanduser(args.mask))
 
@@ -484,7 +488,8 @@ if __name__ == '__main__':
         if not file_paths:
             tk.Tk().withdraw()
             file_paths=filedialog.askopenfilenames()
-
+            if not file_paths:
+                sys.exit()     
         files = [file.split('/')[-1] for file in file_paths]
         paths =['/'.join(p)+'/' for p in [path.split('/')[:-1] for path in file_paths]]
         os.chdir(paths[0])
