@@ -187,10 +187,23 @@ def floorCrop(filename, conf_data, args):
             else:
                 cv2.destroyWindow('Floor Corners for ' + name)    
                 cap.release()
+                END_SELECTION = True
 
         #Press r or R to reset selection
         if k == 114 or k == 82:
             RENEW_TETRAGON = True
+
+        #If window is closed by any other means
+        if not END_SELECTION:
+            try:
+                _ = cv2.getWindowProperty('Floor Corners for ' + name,0)
+            except:
+                if __name__ == '__main__':
+                    sys.exit()
+                else:
+                    cv2.destroyWindow('Floor Corners for ' + name)    
+                    cap.release()
+                    END_SELECTION = True
         
     cv2.destroyWindow('Floor Corners for ' + name)
     if __name__ == '__main__':
