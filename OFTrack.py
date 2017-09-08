@@ -265,7 +265,7 @@ def trace(filename):
 
     #Perhaps we dont need to re-read a frame if we've got the one read in filecrop
     ret, frame = cap.read()
-    while not frame.any():
+    while not ret:
         ret, frame = cap.read()
 
     #If automatic background subtraction is enabled
@@ -416,8 +416,12 @@ def trace(filename):
             imgPoints = cv2.circle(imgPoints, (x,y), 5, BGR_COLOR['black'], -1)
 
             # Draw track of the animal
-            imgTrack = cv2.addWeighted(np.zeros_like(imgTrack), 1, cv2.line(imgTrack, (x,y), (_x,_y),
-                (255, 127, int(cap.get(cv2.CAP_PROP_POS_AVI_RATIO)*255)), 1, cv2.LINE_AA), 0.99, 0.)
+            if args.live: #CAP_PROP_POS_AVI_RATIO isn't supported for cameras
+                imgTrack = cv2.addWeighted(np.zeros_like(imgTrack), 1, cv2.line(imgTrack, (x,y), (_x,_y),
+                    (255, 127, 255), 1, cv2.LINE_AA), 0.99, 0.)
+            else:
+                imgTrack = cv2.addWeighted(np.zeros_like(imgTrack), 1, cv2.line(imgTrack, (x,y), (_x,_y),
+                    (255, 127, int(cap.get(cv2.CAP_PROP_POS_AVI_RATIO)*255)), 1, cv2.LINE_AA), 0.99, 0.)
 
             imgContour = cv2.add(imgPoints, imgTrack)
 
@@ -532,7 +536,11 @@ if __name__ == '__main__':
         
     #GUI file selection if no file or --live flag entered
     if args.live:
-        files = [args.live]
+        if len(args.live)<3:
+            live_camera = int(args.live)
+        else:
+            live_camera = args.live
+        files = [live_camera]
     else:
         if not file_paths:
             tk.Tk().withdraw()
@@ -546,10 +554,12 @@ if __name__ == '__main__':
 
     #Folder structure    
     RELATIVE_DESTINATION_PATH = args.out_destination + 'OFTrack [' + str(datetime.date.today()) + "]/"
-    if not os.path.exists(RELATIVE_DESTINATION_PATH + 'timing'):
-        os.makedirs(RELATIVE_DESTINATION_PATH + 'timing')
-    if not os.path.exists(RELATIVE_DESTINATION_PATH + 'positions'):
-        os.makedirs(RELATIVE_DESTINATION_PATH + 'positions')
+    if args.out_video:
+        if not os.path.exists(RELATIVE_DESTINATION_PATH + 'timing'):
+            os.makedirs(RELATIVE_DESTINATION_PATH + 'timing')
+    if args.out_csv:
+        if not os.path.exists(RELATIVE_DESTINATION_PATH + 'positions'):
+            os.makedirs(RELATIVE_DESTINATION_PATH + 'positions')
 
     for filename in files:
         floorCrop(filename, conf_data, args)
