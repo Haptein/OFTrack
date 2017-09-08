@@ -141,8 +141,6 @@ def floorCrop(filename, conf_data, args):
     
     #Get Resolution
     SD = RES[res]
-    if args.overlay:
-        SD = SD[0]/2 , SD[1]
     
     #Get ratio
     RA = SC[RA]
@@ -257,6 +255,7 @@ def trace(filename):
 
     #If trace overlay is enabled fix vide ratio to 16:9 and generate the inverse perspective matrix
     if args.overlay:
+        SD = SD[0]/2 , SD[1] #This isnt done in floorcrop bc its used by config.py and config doesnt have --overlay option
         re, invper = cv2.invert(perspectiveMatrix[name])
 
     #Init VideoCapture, and get video dimensions

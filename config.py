@@ -282,13 +282,15 @@ if __name__ == '__main__':
     conf_data = reload()
     AvF_thresh = conf_data[-1]
 
-    #Get mask's full path and load it
+    #Get mask's full path and try to load it
     if args.mask:
         args.mask = os.path.abspath(os.path.expanduser(args.mask))
-        mask = load_mask(args.mask, conf_data)
-        if mask is not None:
-            print('Mask loaded correctly.')
-        else: 
+    
+    mask = load_mask(args.mask, conf_data)
+    if mask is not None:
+        print('Mask loaded correctly.')
+    else: 
+        if args.mask:
             print("Couldn't load mask correctly.")
         
     #Launch GUI
