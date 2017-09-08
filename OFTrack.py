@@ -94,10 +94,13 @@ def drawFloorCrop(event,x,y,flags,params):
             imgCroppingPolygon = cv2.addWeighted(params['imgFloorCorners'], 1.0, imgCroppingPolygon, 0.5, 0.)
             cv2.imshow('Floor Corners for ' + name, imgCroppingPolygon)
 
-
+#This function gets the the stage area with user either user input or the help of masks
+#and generates each file's perspective matrices for perspective correction.
+#Its also used in config.py before the calibration process.
 def floorCrop(filename, conf_data, args):
-    global perspectiveMatrix,tetragons,croppingPolygons,SD, name, mask_cont, END_SELECTION
-    global RENEW_TETRAGON, ratio, DimX, DimY, CC, FPS, THRESHOLD_ANIMAL_VS_FLOOR, cap, ext, mask
+    global perspectiveMatrix,tetragons,croppingPolygons,SD, name, mask_cont, mask_croppingPolygons, END_SELECTION
+    global RENEW_TETRAGON, ratio, DimX, DimY, CC, FPS, THRESHOLD_ANIMAL_VS_FLOOR, cap, ext, mask, mask_perspectiveMatrix
+
     ########### Load config data
     [DimX,DimY,CC,RA,FPS,res,ext,THRESHOLD_ANIMAL_VS_FLOOR] = conf_data
     res = RES[res].split('x')
@@ -107,7 +110,7 @@ def floorCrop(filename, conf_data, args):
     RA = RA.split('/')
     ratio = float(RA[0])/float(RA[1])
     ###########
-
+    
     #name is just an identifier for the file in a couple dicts
     if args.live:
             name = 'Live'
@@ -125,39 +128,20 @@ def floorCrop(filename, conf_data, args):
     h = int(h*ratio)
     w = int(w*ratio)
 
-    #If mask image not yet read.
-    if args.mask and ('mask' not in globals()):
-        #Read mask image
-        mask = cv2.imread(args.mask,0)
-        #Binarize mask
-        _, mask = cv2.threshold(mask, 127, 1, cv2.THRESH_BINARY)
-        #Resize to display size
-        mask = cv2.resize(mask,(w,h))
-
-        #Get contours, the minimum area rectangle containing the biggest contour and get its vertices
-        ret,mask_cont,hier = cv2.findContours(mask, 1, 2)
-        mask_cont = mask_cont[np.argmax(map(cv2.contourArea, mask_cont))]
-        rect = cv2.minAreaRect(mask_cont)
-        box = cv2.boxPoints(rect)
-        
-        croppingPolygons[name] = np.uint64(counterclockwiseSort(box))
-        tetragonVertices = np.float32(croppingPolygons[name])
-        tetragonVerticesUpd = np.float32([[0,0],[0,h],[w,h],[w,0]])
-        
-        #Generate perspectice matrix
-        perspectiveMatrix[name] = cv2.getPerspectiveTransform(tetragonVertices, tetragonVerticesUpd)
-
-        #Make mask the same dimensions as frames read
-        mask = np.dstack((mask,mask,mask))
-    
-    #If mask enabled -> ready to go
-    if args.mask:
+    #If mask enabled and sizes are the same
+    if args.mask and mask.shape == (h,w,3):
+        #Reuse the mask perspective matrix and croppingpols
+        croppingPolygons[name] = mask_croppingPolygons
+        perspectiveMatrix[name] = mask_perspectiveMatrix    
+        #File ready to track|calibrate
         if __name__ == '__main__':
-            trace(filename)
+            cap.release()
             return
         else:
             cap.release()
             return perspectiveMatrix
+    elif args.mask:
+        print('The size of %s does not match with that of the mask provided. Please select a region manually.'%filename)
 
     #Take first non-null frame and find corners within it
     ret, frame = cap.read()
@@ -168,7 +152,7 @@ def floorCrop(filename, conf_data, args):
     frame = cv2.resize(frame,(w,h))
     #Turn grayscale
     frameGray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    #Back to BGR so we can overlay the selected polygon in color
+    #and back to BGR so we can overlay the selected polygon in color
     frameGray = cv2.cvtColor(frameGray, cv2.COLOR_GRAY2BGR)
     imgFloorCorners = frameGray
 
@@ -207,35 +191,39 @@ def floorCrop(filename, conf_data, args):
         
     cv2.destroyWindow('Floor Corners for ' + name)
     if __name__ == '__main__':
-        trace(filename)
+        cap.release()
+        return
     else:
         cap.release()
         return perspectiveMatrix
 
 #This is where the tracking is done.
 def trace(filename):
-    global perspectiveMatrix,croppingPolygons,tetragons,name,WAIT_DELAY
-    global POS, DimX, DimY, SD, CC, cap, ext, mask, mask_cont
+    global perspectiveMatrix,croppingPolygons,tetragons,WAIT_DELAY
+    global DimX, ratio, DimY, SD, CC, ext, mask, mask_cont
 
-    POS=np.array([[-1,-1,-1]])
-    kernelSize = (25, 25)
+    POS=np.array([[-1,-1,-1]])#Init file for the csv dump
+    kernelSize = (25, 25)#Kernel size for GaussianBlurring (normal thresholding)
 
-    h, w = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    h = int(h*ratio)
-    w = int(w*ratio)
-
-    #If trace overlay is enabled fix vide ratio to 16:9 and generate the inverse perspective matrix
-    if args.overlay:
-        SD = SD[0]/2 , SD[1]
-        re, invper = cv2.invert(perspectiveMatrix[name])
-
+    #File id
     if args.live:
         name = 'Live'
         livedate = time.strftime(" %Y-%m-%d[%H:%M:%S]")
     else:
         name = os.path.splitext(filename)[0]
         livedate = ''
-    
+
+    #If trace overlay is enabled fix vide ratio to 16:9 and generate the inverse perspective matrix
+    if args.overlay:
+        SD = SD[0]/2 , SD[1]
+        re, invper = cv2.invert(perspectiveMatrix[name])
+
+    #Init VideoCapture, and get video dimensions
+    cap = cv2.VideoCapture(filename)
+    h, w = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    h = int(h*ratio)
+    w = int(w*ratio)
+
     #Perhaps we dont need to re-read a frame if we've got the one read in filecrop
     ret, frame = cap.read()
     while not frame.any():
@@ -288,18 +276,19 @@ def trace(filename):
         if not CC:
             frame = cv2.bitwise_not(frame)
         
-        if args.mask:
-            #frameColor = frameColor * mask #
+        if args.mask and mask.shape == (h,w,3):
+            #frameColor = frameColor * mask
             frame = frame * mask
         
         #Draw selected area
         if len(croppingPolygons[name]) == 4:
-            if not args.mask:
-                #Selected polygon
-                cv2.drawContours(frameColor, [np.reshape(croppingPolygons[name], (4,2))], -1, BGR_COLOR['black'], 2, cv2.LINE_AA)
-            else:
+            if args.mask and mask.shape == (h,w,3):
                 #Mask Contour
                 cv2.drawContours(frameColor, [mask_cont], -1, BGR_COLOR['black'], 2, cv2.LINE_AA)
+            else:
+                #Selected polygon
+                cv2.drawContours(frameColor, [np.reshape(croppingPolygons[name], (4,2))], -1, BGR_COLOR['black'], 2, cv2.LINE_AA)
+                
         else:
             #Still not sure what this is for, might actually be rubish
             cv2.drawContours(frameColor, tetragons, -1, BGR_COLOR['black'], 2, cv2.LINE_AA)
@@ -336,8 +325,11 @@ def trace(filename):
         
             distance += np.sqrt( (x-_x)**2 + (y-_y)**2 )/float(h)
             Distance = distance*DimY/100
-
-        
+        else:
+            #Update cli progress bar
+            if not args.live:
+                progressBar(cap.get(cv2.CAP_PROP_POS_FRAMES),cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                
         if args.display or args.out_video:
             if not contours:
                 
@@ -450,8 +442,6 @@ def trace(filename):
     if args.out_video:
         video.release()
     
-    file.write(name + ",%.2f" % Distance + ",%.1f\n" % t)
-    file.close()
 
 
 #Init some vars
@@ -462,11 +452,10 @@ BGR_COLOR = {'red': (0,0,255),
         'black': (0,0,0),
         'white': (255,255,255)}
 WAIT_DELAY = 1
-
 RENEW_TETRAGON = False
 perspectiveMatrix = dict()
 croppingPolygons = dict()
-
+time_params = [time.time(),time.time()+1]
 
 if __name__ == '__main__':
     #Load config
@@ -507,6 +496,36 @@ if __name__ == '__main__':
         paths =['/'.join(p)+'/' for p in [path.split('/')[:-1] for path in file_paths]]
         os.chdir(paths[0])
 
+    if args.mask:
+        #Read mask image and binarize it
+        mask = cv2.imread(args.mask,0)
+        mask_h, mask_w = mask.shape
+        _, mask = cv2.threshold(mask, 127, 1, cv2.THRESH_BINARY)
+
+        #Get display ratio
+        RA = SC[conf_data[3]].split('/')
+        ratio = float(RA[0])/float(RA[1])
+        #Resize to display size
+        mask_w = int(mask_w*ratio)
+        mask_h = int(mask_h*ratio)
+        mask = cv2.resize(mask,(mask_w,mask_h))
+
+        #Get contours, the minimum area rectangle containing the biggest contour and get its vertices
+        ret,mask_cont,hier = cv2.findContours(mask, 1, 2)
+        mask_cont = mask_cont[np.argmax(map(cv2.contourArea, mask_cont))]
+        rect = cv2.minAreaRect(mask_cont)
+        box = cv2.boxPoints(rect)
+
+        #Generate perspective matrix
+        mask_croppingPolygons = np.uint64(counterclockwiseSort(box))
+        tetragonVertices = np.float32(mask_croppingPolygons)
+        tetragonVerticesUpd = np.float32([[0,0],[0,mask_h],[mask_w,mask_h],[mask_w,0]])
+        mask_perspectiveMatrix = cv2.getPerspectiveTransform(tetragonVertices, tetragonVerticesUpd)
+
+        #Make mask the same dimensions as frames read
+        mask = np.dstack((mask,mask,mask))
+    
+
     #Folder structure    
     RELATIVE_DESTINATION_PATH = args.out_destination + 'OFTrack [' + str(datetime.date.today()) + "]/"
     if not os.path.exists(RELATIVE_DESTINATION_PATH + 'timing'):
@@ -514,13 +533,8 @@ if __name__ == '__main__':
     if not os.path.exists(RELATIVE_DESTINATION_PATH + 'positions'):
         os.makedirs(RELATIVE_DESTINATION_PATH + 'positions')
 
-    file = open(RELATIVE_DESTINATION_PATH + "distances.csv", 'w')
-    file.write("animal,distance [metres],run time [seconds]\n")
-    file.close()
-
-    #for filename in files:
-    for file_num, filename in enumerate(files):
-        time_params = [time.time(),time.time()+1]
-        file = open(RELATIVE_DESTINATION_PATH + "distances.csv", 'a')
+    for filename in files:
         floorCrop(filename, conf_data, args)
+    for file_num, filename in enumerate(files):
+        trace(filename)
 
