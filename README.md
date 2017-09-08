@@ -36,7 +36,7 @@ optional arguments:
   -h, --help            show this help message and exit                    
   -o DES, --output DES  Specify output destination.                        
   -m IMG, --mask IMG    Specify a mask image.                              
-  -a, --abs             Automatic background subtraction.                  
+  -a, --abs             Enable automatic background subtraction.                  
   -ov, --overlay        Overlay video with trace instead of side by side view.                                                                         
   -nv, --no-video       Disable video file output.                         
   -nc, --no-csv         Disable csv file output.                           

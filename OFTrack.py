@@ -504,7 +504,7 @@ if __name__ == '__main__':
     parser.add_argument('input',nargs='*',help='Input files.')
     parser.add_argument('-o','--output',dest='out_destination',metavar='DES',default='',help='Specify output destination.')
     parser.add_argument('-m','--mask',dest='mask',metavar='IMG',default='',help='Specify a mask image.')
-    parser.add_argument('-a','--abs',dest='abs',action='store_true',help="Automatic background subtraction.")
+    parser.add_argument('-a','--abs',dest='abs',action='store_true',help="Enable automatic background subtraction.")
     parser.add_argument('-ov','--overlay',dest='overlay',action='store_true',help='Overlay video with trace instead of side by side view.')
     parser.add_argument('-nv','--no-video',dest='out_video',action='store_false',help='Disable video file output.')
     parser.add_argument('-nc','--no-csv',dest='out_csv',action='store_false',help='Disable csv file output.')
