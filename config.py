@@ -135,7 +135,10 @@ class getparams(tk.Tk):
         ratio = float(RA[0])/float(RA[1])
 
         if args.live:
-            filename = args.live
+            if len(args.live)<3:
+                filename = int(args.live)
+            else:
+                filename = args.live
             name = 'Live'
         else:
             tk.Tk().withdraw()
@@ -151,12 +154,13 @@ class getparams(tk.Tk):
 
         ret, frame = cap.read()
         nullframes = 0
-        while not frame.any():
+        while not ret:
             ret, frame = cap.read()
             nullframes += 1
             if nullframes > 50:
                 break
-        
+
+        cap.release()
         if ret:
             print('Frame found.')
         else: 
@@ -175,6 +179,7 @@ class getparams(tk.Tk):
         def nothing(x):
             pass
 
+        cap = cv2.VideoCapture(filename)
         cv2.namedWindow('Calibration')
         cv2.createTrackbar('Threshold','Calibration',AvF_thresh,255,nothing)
 
@@ -184,6 +189,7 @@ class getparams(tk.Tk):
 
             k = cv2.waitKey(1) & 0xFF
             if k == 27:
+                cap.release()
                 break
 
             THRESHOLD_ANIMAL_VS_FLOOR = cv2.getTrackbarPos('Threshold','Calibration')
@@ -195,7 +201,7 @@ class getparams(tk.Tk):
                 
             
             ret, frame = cap.read()
-            if not ret:
+            if not ret and not args.live:
                 cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 continue
 
