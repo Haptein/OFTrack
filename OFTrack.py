@@ -98,7 +98,7 @@ def drawFloorCrop(event,x,y,flags,params):
 #and generates each file's perspective matrices for perspective correction.
 #Its also used in config.py before the calibration process.
 def floorCrop(filename, conf_data, args):
-    global perspectiveMatrix,tetragons,croppingPolygons,SD, name, mask_cont, mask_croppingPolygons, END_SELECTION
+    global perspectiveMatrix,croppingPolygons,SD, name, mask_cont, mask_croppingPolygons, END_SELECTION
     global RENEW_TETRAGON, ratio, DimX, DimY, CC, FPS, THRESHOLD_ANIMAL_VS_FLOOR, cap, ext, mask, mask_perspectiveMatrix
 
     ########### Load config data
@@ -118,7 +118,6 @@ def floorCrop(filename, conf_data, args):
             name = os.path.splitext(filename)[0]
 
     #Init vars
-    tetragons = []
     tetragonVertices = []
     perspectiveMatrix[name] = []
     croppingPolygons[name] = np.array([[0,0]])
@@ -199,7 +198,7 @@ def floorCrop(filename, conf_data, args):
 
 #This is where the tracking is done.
 def trace(filename):
-    global perspectiveMatrix,croppingPolygons,tetragons,WAIT_DELAY
+    global perspectiveMatrix,croppingPolygons,WAIT_DELAY
     global DimX, ratio, DimY, SD, CC, ext, mask, mask_cont
 
     POS=np.array([[-1,-1,-1]])#Init file for the csv dump
@@ -281,17 +280,13 @@ def trace(filename):
             frame = frame * mask
         
         #Draw selected area
-        if len(croppingPolygons[name]) == 4:
-            if args.mask and mask.shape == (h,w,3):
-                #Mask Contour
-                cv2.drawContours(frameColor, [mask_cont], -1, BGR_COLOR['black'], 2, cv2.LINE_AA)
-            else:
-                #Selected polygon
-                cv2.drawContours(frameColor, [np.reshape(croppingPolygons[name], (4,2))], -1, BGR_COLOR['black'], 2, cv2.LINE_AA)
-                
+        if args.mask and mask.shape == (h,w,3):
+            #Mask Contour
+            cv2.drawContours(frameColor, [mask_cont], -1, BGR_COLOR['black'], 2, cv2.LINE_AA)
         else:
-            #Still not sure what this is for, might actually be rubish
-            cv2.drawContours(frameColor, tetragons, -1, BGR_COLOR['black'], 2, cv2.LINE_AA)
+            #Selected polygon
+            cv2.drawContours(frameColor, [np.reshape(croppingPolygons[name], (4,2))], -1, BGR_COLOR['black'], 2, cv2.LINE_AA)
+        
 
         frame = cv2.warpPerspective(frame, perspectiveMatrix[name], (w,h))#####
         frame = cv2.resize(frame,( int(float(h)*float(DimX)/float(DimY) ), h))#####
@@ -360,6 +355,7 @@ def trace(filename):
             
                 k = cv2.waitKey(WAIT_DELAY) & 0xff
                 if k == 27:
+                    print('\nTracking %s interrupted.'%filename)
                     break
                 if k == 32:
                     if WAIT_DELAY == 1:
@@ -413,6 +409,7 @@ def trace(filename):
 
             k = cv2.waitKey(WAIT_DELAY) & 0xff
             if k == 27:
+                print('\nTracking %s interrupted.'%filename)
                 break
             if k == 32:
                 if WAIT_DELAY == 1:
