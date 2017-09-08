@@ -1,7 +1,7 @@
 #!/usr/bin/python2.7
 # -*- coding: utf-8 -*-
 #from __future__ import print_function
-from config import RES, CC, SC, EXT, reload
+from config import CC, SC, EXT, reload
 import tkFileDialog as filedialog
 import os, sys, time, datetime
 import Tkinter as tk
@@ -135,11 +135,16 @@ def floorCrop(filename, conf_data, args):
     global perspectiveMatrix,croppingPolygons,SD, name, mask_cont, mask_croppingPolygons, END_SELECTION
     global RENEW_TETRAGON, ratio, DimX, DimY, CC, FPS, THRESHOLD_ANIMAL_VS_FLOOR, cap, ext, mask, mask_perspectiveMatrix
 
-    ########### Load config data
+    ########### Load config data # This vars are also used in the trace function
     [DimX,DimY,CC,RA,FPS,res,ext,THRESHOLD_ANIMAL_VS_FLOOR] = conf_data
-    res = RES[res].split('x')
     ext = EXT[ext]
-    SD = int(res[0]), int(res[1])
+    
+    #Get Resolution
+    SD = RES[res]
+    if args.overlay:
+        SD = SD[0]/2 , SD[1]
+    
+    #Get ratio
     RA = SC[RA]
     RA = RA.split('/')
     ratio = float(RA[0])/float(RA[1])
@@ -252,7 +257,6 @@ def trace(filename):
 
     #If trace overlay is enabled fix vide ratio to 16:9 and generate the inverse perspective matrix
     if args.overlay:
-        SD = SD[0]/2 , SD[1]
         re, invper = cv2.invert(perspectiveMatrix[name])
 
     #Init VideoCapture, and get video dimensions
@@ -491,6 +495,8 @@ RENEW_TETRAGON = False
 perspectiveMatrix = dict()
 croppingPolygons = dict()
 time_params = [time.time(),time.time()+1]
+RES = [(3840,1080),(2560,720),(1920,540),(1280,360)]
+
 
 if __name__ == '__main__':
     #Load config
@@ -517,10 +523,13 @@ if __name__ == '__main__':
         args.out_destination = os.path.abspath(os.path.expanduser(args.out_destination)) + '/'
     if args.mask:
         args.mask = os.path.abspath(os.path.expanduser(args.mask))
-        mask = load_mask(args.mask, conf_data)
-        if mask is not None:
-            print('Mask loaded correctly.')
-        else: 
+    
+    #Load mask
+    mask = load_mask(args.mask, conf_data)
+    if mask is not None:
+        print('Mask loaded correctly.')
+    else:
+        if args.mask:
             print("Couldn't load mask correctly.")
         
     #GUI file selection if no file or --live flag entered

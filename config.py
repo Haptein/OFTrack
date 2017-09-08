@@ -9,8 +9,8 @@ import argparse
 DEFAULTS = np.array([33,21,0,3,30,2,0,170])
 
 #Resolution options
-#RES = ["1920x1080","1280x720","960x540", "640x360"]
-RES = ["3840x1080","2560x720","1920x540","1280x360"]
+#Different from RES in OFTrack.py
+RES = ["1080p","720p","540p","360p"]
 #Color Config
 CC = ["Dark Animal / Clear Surface", "Clear Animal / Dark Surface"] 
 #Scaling options
@@ -65,7 +65,7 @@ class getparams(tk.Tk):
         self.sc = tk.OptionMenu(self, self.SC, "1/1","1/2","2/3","1/3","1/4")
         self.fps = tk.Entry(self,width=15)
         #self.res = tk.OptionMenu(self, self.RES, "1920x1080","1280x720","960x540", "640x360")
-        self.res = tk.OptionMenu(self, self.RES, "3840x1080","2560x720","1920x540","1280x360")
+        self.res = tk.OptionMenu(self, self.RES, "1080p","720p","540p","360p")
         self.ext = tk.OptionMenu(self, self.EXT, "avi","mp4","mkv")######
         self.cal = tk.Button(self, text="Calibrate", command=self.on_cal)
         self.save = tk.Button(self, text="Save Settings", command=self.on_save)
