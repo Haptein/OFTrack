@@ -1,9 +1,9 @@
 #!/usr/bin/python2.7
 import tkFileDialog as filedialog
 import Tkinter as tk
+import os, cv2, sys
 import numpy as np
 import argparse
-import os, cv2
 
 #[Dimx,Dimy,CC,ratio,FPS,out_res,AvF_thresh]
 DEFAULTS = np.array([33,21,0,3,30,2,0,170])
@@ -120,14 +120,13 @@ class getparams(tk.Tk):
             Settings = np.array([dimx,dimy,cc,sc,fps,res,ext,AvF_thresh]).reshape(1,len(DEFAULTS))
             np.savetxt(cfile,Settings,delimiter=',',fmt='%s')
             conf_data = np.array([dimx,dimy,cc,sc,fps,res,ext,AvF_thresh])
-            print(conf_data)
         except:
             print('saving failed.')
         
         
     def on_exit(self):
         self.destroy()
-        exit()
+        sys.exit()
 
     def on_cal(self):
         global conf_data,SC,AvF_thresh
@@ -165,33 +164,10 @@ class getparams(tk.Tk):
             print('No frames found.')
             return
 
-        #If mask image not yet read.
-        if args.mask and ('mask' not in globals()):
-            #Read mask image
-            mask = cv2.imread(args.mask,0)
-            #Binarize mask
-            _, mask = cv2.threshold(mask, 127, 1, cv2.THRESH_BINARY)
-            #Resize to display size
-            mask = cv2.resize(mask,(w,h))
-            #Get contours, the minimum area rectangle containing the biggest contour and get its vertices
-            ret,mask_cont,hier = cv2.findContours(mask, 1, 2)
-            mask_cont = mask_cont[np.argmax(map(cv2.contourArea, mask_cont))]
-            rect = cv2.minAreaRect(mask_cont)
-            box = cv2.boxPoints(rect)
-
-            croppingPolygons = np.uint64(counterclockwiseSort(box))
-            tetragonVertices = np.float32(croppingPolygons)
-            tetragonVerticesUpd = np.float32([[0,0],[0,h],[w,h],[w,0]])        
-            #Generate perspectice matrix
-            perspectiveMatrix = dict( {name:cv2.getPerspectiveTransform(tetragonVertices, tetragonVerticesUpd)} )
-            #Make mask the same dimensions as frames read
-            mask = np.dstack((mask,mask,mask))
-        else:
-            perspectiveMatrix = floorCrop(filename, conf_data, args)
-        
+        perspectiveMatrix = floorCrop(filename, conf_data, args)
         
         if  len(perspectiveMatrix[name])==0:
-            print('no perspective')
+            print('No perspective.')
             return
 
         kernelSize = (25, 25)
@@ -231,7 +207,7 @@ class getparams(tk.Tk):
                 frame = cv2.bitwise_not(frame)
 
             #Apply mask if provided
-            if args.mask:
+            if (mask is not None) and mask.shape == frame.shape:
                 frameColor = frameColor * mask
                 frame = frame * mask
 
@@ -258,7 +234,7 @@ class getparams(tk.Tk):
             _, thresh = cv2.threshold(frameBlur, THRESHOLD_ANIMAL_VS_FLOOR, 255, cv2.THRESH_BINARY)
             _, contours, hierarchy = cv2.findContours(thresh.copy(),cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
-            if len(contours)>0:
+            if contours:
                 contour = contours[np.argmax(map(cv2.contourArea, contours))]
                 M = cv2.moments(contour)
                 if M['m00']==0:
@@ -268,7 +244,7 @@ class getparams(tk.Tk):
 
                 # Draw the most acute angles of the contour (tail/muzzle/paws of the animal)
                 hull = cv2.convexHull(contour)
-                imgPoints = np.zeros(frame.shape,np.uint8)
+                imgPoints = np.zeros_like(frame)
                 for i in range(2, len(hull)-2):
                     if np.dot(hull[i][0]- hull[i-2][0], hull[i][0]- hull[i+2][0]) > 0:
                         imgPoints = cv2.circle(imgPoints, (hull[i][0][0],hull[i][0][1]), 5, BGR_COLOR['yellow'], -1, cv2.LINE_AA)
@@ -282,16 +258,19 @@ class getparams(tk.Tk):
                 frame = cv2.addWeighted(frame, 0.4, imgContour, 1.0, 0.)
                 cv2.circle(frame, (x,y), 5, BGR_COLOR['black'], -1, cv2.LINE_AA)
 
+            else:
+                frame = np.zeros_like(frame)
+
             frame = cv2.resize(frame,(h*DimX/DimY,h))
             layout = np.hstack((frame, frameColor))
             cv2.imshow('Calibration', layout)
 
         cv2.destroyAllWindows()
-        print("Calibration complete.")
+        print("Calibration complete. Threshold set to %s." % AvF_thresh)
 
 
 if __name__ == '__main__':
-    from OFTrack import floorCrop, BGR_COLOR, counterclockwiseSort
+    from OFTrack import floorCrop, BGR_COLOR, counterclockwiseSort, load_mask
     #Argparsing
     parser = argparse.ArgumentParser(description='Animal tracking with OpenCV')
     parser.add_argument('-l','--live',dest='live',metavar='SRC',default='',
@@ -303,5 +282,14 @@ if __name__ == '__main__':
     conf_data = reload()
     AvF_thresh = conf_data[-1]
 
+    #Get mask's full path and load it
+    if args.mask:
+        args.mask = os.path.abspath(os.path.expanduser(args.mask))
+        mask = load_mask(args.mask, conf_data)
+        if mask is not None:
+            print('Mask loaded correctly.')
+        else: 
+            print("Couldn't load mask correctly.")
+        
     #Launch GUI
     getparams().mainloop()

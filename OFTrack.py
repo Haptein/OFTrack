@@ -15,6 +15,40 @@ def counterclockwiseSort(tetragon):
     tetragon[2:4] = sorted(tetragon[2:4], key = lambda e: e[1], reverse = True)
     return tetragon
 
+def load_mask(mask_file,conf_data):
+    global mask_cont, mask_croppingPolygons, mask_perspectiveMatrix
+    try:
+        #Read mask image and binarize it
+        mask = cv2.imread(mask_file,0)
+        mask_h, mask_w = mask.shape
+        _, mask = cv2.threshold(mask, 127, 1, cv2.THRESH_BINARY)
+
+        #Get display ratio
+        RA = SC[conf_data[3]].split('/')
+        ratio = float(RA[0])/float(RA[1])
+        #Resize to display size
+        mask_w = int(mask_w*ratio)
+        mask_h = int(mask_h*ratio)
+        mask = cv2.resize(mask,(mask_w,mask_h))
+
+        #Get contours, the minimum area rectangle containing the biggest contour and get its vertices
+        ret,mask_cont,hier = cv2.findContours(mask, 1, 2)
+        mask_cont = mask_cont[np.argmax(map(cv2.contourArea, mask_cont))]
+        rect = cv2.minAreaRect(mask_cont)
+        box = cv2.boxPoints(rect)
+
+        #Generate perspective matrix
+        mask_croppingPolygons = np.uint64(counterclockwiseSort(box))
+        tetragonVertices = np.float32(mask_croppingPolygons)
+        tetragonVerticesUpd = np.float32([[0,0],[0,mask_h],[mask_w,mask_h],[mask_w,0]])
+        mask_perspectiveMatrix = cv2.getPerspectiveTransform(tetragonVertices, tetragonVerticesUpd)
+
+        #Make mask the same dimensions as frames read
+        mask = np.dstack((mask,mask,mask))
+        return mask
+    except:
+        return None
+
 def progressBar(iteration, total, length = 50, fill = '█'):
     global time_params
     fiee = 120 #Frame interval for eta estimation
@@ -48,7 +82,7 @@ def progressBar(iteration, total, length = 50, fill = '█'):
 # Mouse callback function for drawing a cropping polygon
 # This function is ignored if a mask is selected
 def drawFloorCrop(event,x,y,flags,params):
-    global perspectiveMatrix,name,RENEW_TETRAGON,END_SELECTION
+    global perspectiveMatrix, name, RENEW_TETRAGON,END_SELECTION
     imgCroppingPolygon = np.zeros_like(params['imgFloorCorners'])
 
     #If key pressed r or R, reset selection
@@ -127,8 +161,12 @@ def floorCrop(filename, conf_data, args):
     h = int(h*ratio)
     w = int(w*ratio)
 
-    #If mask enabled and sizes are the same
-    if args.mask and mask.shape == (h,w,3):
+    #Load mask if run from config.py
+    if __name__ != '__main__':
+         mask = load_mask(args.mask, conf_data)
+
+    #If mask enabled, mask loaded correctly, and sizes are the same
+    if (mask is not None) and mask.shape == (h,w,3):
         #Reuse the mask perspective matrix and croppingpols
         croppingPolygons[name] = mask_croppingPolygons
         perspectiveMatrix[name] = mask_perspectiveMatrix    
@@ -479,7 +517,12 @@ if __name__ == '__main__':
         args.out_destination = os.path.abspath(os.path.expanduser(args.out_destination)) + '/'
     if args.mask:
         args.mask = os.path.abspath(os.path.expanduser(args.mask))
-
+        mask = load_mask(args.mask, conf_data)
+        if mask is not None:
+            print('Mask loaded correctly.')
+        else: 
+            print("Couldn't load mask correctly.")
+        
     #GUI file selection if no file or --live flag entered
     if args.live:
         files = [args.live]
@@ -493,35 +536,6 @@ if __name__ == '__main__':
         paths =['/'.join(p)+'/' for p in [path.split('/')[:-1] for path in file_paths]]
         os.chdir(paths[0])
 
-    if args.mask:
-        #Read mask image and binarize it
-        mask = cv2.imread(args.mask,0)
-        mask_h, mask_w = mask.shape
-        _, mask = cv2.threshold(mask, 127, 1, cv2.THRESH_BINARY)
-
-        #Get display ratio
-        RA = SC[conf_data[3]].split('/')
-        ratio = float(RA[0])/float(RA[1])
-        #Resize to display size
-        mask_w = int(mask_w*ratio)
-        mask_h = int(mask_h*ratio)
-        mask = cv2.resize(mask,(mask_w,mask_h))
-
-        #Get contours, the minimum area rectangle containing the biggest contour and get its vertices
-        ret,mask_cont,hier = cv2.findContours(mask, 1, 2)
-        mask_cont = mask_cont[np.argmax(map(cv2.contourArea, mask_cont))]
-        rect = cv2.minAreaRect(mask_cont)
-        box = cv2.boxPoints(rect)
-
-        #Generate perspective matrix
-        mask_croppingPolygons = np.uint64(counterclockwiseSort(box))
-        tetragonVertices = np.float32(mask_croppingPolygons)
-        tetragonVerticesUpd = np.float32([[0,0],[0,mask_h],[mask_w,mask_h],[mask_w,0]])
-        mask_perspectiveMatrix = cv2.getPerspectiveTransform(tetragonVertices, tetragonVerticesUpd)
-
-        #Make mask the same dimensions as frames read
-        mask = np.dstack((mask,mask,mask))
-    
 
     #Folder structure    
     RELATIVE_DESTINATION_PATH = args.out_destination + 'OFTrack [' + str(datetime.date.today()) + "]/"
