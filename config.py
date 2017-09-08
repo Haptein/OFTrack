@@ -9,7 +9,6 @@ import argparse
 DEFAULTS = np.array([33,21,0,3,30,2,0,170])
 
 #Resolution options
-#Different from RES in OFTrack.py
 RES = ["1080p","720p","540p","360p"]
 #Color Config
 CC = ["Dark Animal / Clear Surface", "Clear Animal / Dark Surface"] 

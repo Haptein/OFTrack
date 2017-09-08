@@ -1,6 +1,5 @@
 #!/usr/bin/python2.7
 # -*- coding: utf-8 -*-
-#from __future__ import print_function
 from config import CC, SC, EXT, reload
 import tkFileDialog as filedialog
 import os, sys, time, datetime
@@ -140,7 +139,7 @@ def floorCrop(filename, conf_data, args):
     ext = EXT[ext]
     
     #Get Resolution
-    SD = RES[res]
+    SD = RESOLUTION[res]
     
     #Get ratio
     RA = SC[RA]
@@ -494,7 +493,7 @@ RENEW_TETRAGON = False
 perspectiveMatrix = dict()
 croppingPolygons = dict()
 time_params = [time.time(),time.time()+1]
-RES = [(3840,1080),(2560,720),(1920,540),(1280,360)]
+RESOLUTION = [(3840,1080),(2560,720),(1920,540),(1280,360)]
 
 
 if __name__ == '__main__':
