@@ -10,7 +10,6 @@ Examples
 Circular center time evaluation.
 
 Documentation
-Comment properly all files.
 Add info to readme.md
     - config/calibration tutorial
     - tracking tutorial
