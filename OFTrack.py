@@ -49,7 +49,6 @@ def load_mask(mask_file,conf_data):
         return None
 
 def progressBar(iteration, total, length = 50, fill = '█'):
-    return##########################################################################################################
     global time_params
     fiee = 120 #Frame interval for eta estimation
 
