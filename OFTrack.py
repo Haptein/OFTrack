@@ -368,7 +368,7 @@ def trace(filename):
         if args.display or args.out_video:
             if not contours:
                 
-                frame = imgTrack
+                frame = imgTrack.copy()
                 
                 if args.overlay:
                     #Inverse perspective transformation
