@@ -49,6 +49,7 @@ def load_mask(mask_file,conf_data):
         return None
 
 def progressBar(iteration, total, length = 50, fill = '█'):
+    return##########################################################################################################
     global time_params
     fiee = 120 #Frame interval for eta estimation
 
@@ -297,6 +298,7 @@ def trace(filename):
     distance = _x = _y = 0
     Distance = x = y = 0
     
+    first_contour = True
     #Read frames until the end of time, or frames.
     while frame is not None:
         ret, frame = cap.read()
@@ -348,27 +350,61 @@ def trace(filename):
         _, contours, hierarchy = cv2.findContours(thresh.copy(),cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
         if contours:
-            # Find a contour with the biggest area (the animal if you set your stuff correctly)
-            contour = contours[np.argmax(map(cv2.contourArea, contours))]
-            M = cv2.moments(contour)
-            if M['m00']==0: continue
-            x = int(M['m10']/M['m00'])
-            y = int(M['m01']/M['m00'])
-            if _x == 0 and _y == 0:
-                _x = x
-                _y = y
-        
+            #If abs disabled or beginning of video
+            if not args.abs or t<3 or first_contour:
+                # Find a contour with the biggest area (the animal if you set your stuff correctly)
+                contour = contours[np.argmax(map(cv2.contourArea, contours))]
+                M = cv2.moments(contour)
+                if M['m00']==0: continue
+                x = int(M['m10']/M['m00'])
+                y = int(M['m01']/M['m00'])
+                if _x == 0 and _y == 0:
+                    _x = x
+                    _y = y
+
+                if args.abs:
+                    _a = np.argmax(map(cv2.contourArea, contours))
+                    
+            else:
+                #Get area and positions for every contour. Animal is point closer to last in coordinates(Area,distance_from_last_point)
+                #Could also try matching shapes.
+                criteria_space = []#Array containing [area,distance_from_last_point] for each contour
+                areas_cont = map(cv2.contourArea, contours)
+                momes_cont = map(cv2.moments, contours)
+                for a,m in zip(areas_cont,momes_cont):
+                    if m['m00']==0:
+                        criteria_space.append(np.inf)
+                        continue
+                    #Get center of contour and calculate distance to last point
+                    xx = int(m['m10']/m['m00'])
+                    yy = int(m['m01']/m['m00'])
+                    dis = ( np.sqrt( (xx-_x)**2 + (yy-_y)**2 ))
+                    if dis/float(h) > 0.2  : #If distance is from last point ist greater than 20% of frame's height
+                        criteria_space.append(np.inf)    #It's most probably not the object to track
+                        continue
+
+                    criteria_space.append( np.sqrt( (a-_a)**2 + (dis-0)**2 ) )
+                    
+                #Contour must be the one with minimum distance in this space.
+                contour = contours[np.argmin(criteria_space)]
+                M = momes_cont[np.argmin(criteria_space)]
+                if M['m00']==0: continue
+                x = int(M['m10']/M['m00'])
+                y = int(M['m01']/M['m00'])
+                _a = cv2.contourArea(contour)
+
+            first_contour = False
             distance += np.sqrt( (x-_x)**2 + (y-_y)**2 )/float(h)
             Distance = distance*DimY/100
-        else:
+        else:   
             #Update cli progress bar
             if not args.live:
                 progressBar(cap.get(cv2.CAP_PROP_POS_FRAMES),cap.get(cv2.CAP_PROP_FRAME_COUNT))
                 
         if args.display or args.out_video:
             if not contours:
-                
-                frame = imgTrack
+
+                frame = imgTrack.copy()
                 
                 if args.overlay:
                     #Inverse perspective transformation
@@ -508,7 +544,7 @@ if __name__ == '__main__':
     parser.add_argument('input',nargs='*',help='Input files.')
     parser.add_argument('-o','--output',dest='out_destination',metavar='DES',default='',help='Specify output destination.')
     parser.add_argument('-m','--mask',dest='mask',metavar='IMG',default='',help='Specify a mask image.')
-    parser.add_argument('-a','--abs',dest='abs',action='store_true',help="Enable automatic background subtraction.")
+    parser.add_argument('-a','--abs',dest='abs',action='store_true',help="Enable automatic background subtraction based tracking.")
     parser.add_argument('-ov','--overlay',dest='overlay',action='store_true',help='Overlay video with trace instead of side by side view.')
     parser.add_argument('-nv','--no-video',dest='out_video',action='store_false',help='Disable video file output.')
     parser.add_argument('-nc','--no-csv',dest='out_csv',action='store_false',help='Disable csv file output.')
