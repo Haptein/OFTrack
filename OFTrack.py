@@ -252,16 +252,18 @@ def trace(filename):
         name = os.path.splitext(filename)[0]
         livedate = ''
 
-    #If trace overlay is enabled fix vide ratio to 16:9 and generate the inverse perspective matrix
-    if args.overlay:
-        SD = SD[0]/2 , SD[1] #This isnt done in floorcrop bc its used by config.py and config doesnt have --overlay option
-        re, invper = cv2.invert(perspectiveMatrix[name])
-
     #Init VideoCapture, and get video dimensions
     cap = cv2.VideoCapture(filename)
     h, w = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(h*ratio)
     w = int(w*ratio)
+
+    #If trace overlay is enabled mantain video aspect ratio and generate the inverse perspective matrix
+    if args.overlay:
+        #SD isn't modified in floorcrop bc its used by config.py
+        aspect_ratio = float(w)/float(h)
+        SD = int(SD[1]*aspect_ratio) , SD[1]
+        re, invper = cv2.invert(perspectiveMatrix[name])
 
     #Perhaps we dont need to re-read a frame if we've got the one read in filecrop
     ret, frame = cap.read()
