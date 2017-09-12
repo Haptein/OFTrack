@@ -33,18 +33,18 @@ positional arguments:
   input                 Input files. 
 
 optional arguments:                  
-  -h, --help            show this help message and exit                    
-  -o DES, --output DES  Specify output destination.                        
-  -m IMG, --mask IMG    Specify a mask image.                              
-  -a, --abs             Enable automatic background subtraction.                  
-  -ov, --overlay        Overlay video with trace instead of side by side view.                                                                         
-  -nv, --no-video       Disable video file output.                         
-  -nc, --no-csv         Disable csv file output.                           
-  -nd, --no-display     Disable video display.                             
-  -l SRC, --live SRC    Specify a camera for live video feed. It can be an 
-                        integer or an ip address.                          
-  -ht, --hide-time      Hide time.   
-  -hd, --hide-distance  Hide distance estimation.  
+  -h, --help            show this help message and exit
+  -o DES, --output DES  Specify output destination
+  -m IMG, --mask IMG    Specify a mask image
+  -a, --abs             Enable automatic background subtraction based tracking
+  -ov, --overlay        Overlay video with trace instead of side by side view
+  -nv, --no-video       Disable video file output
+  -nc, --no-csv         Disable csv file output
+  -nd, --no-display     Disable video display
+  -ht, --hide-time      Hide time
+  -hd, --hide-distance  Hide distance estimation
+  -l SRC, --live SRC    Specify a camera for live video feed, it can be an
+                        integer or an ip address
 ```
 
 
